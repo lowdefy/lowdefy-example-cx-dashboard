@@ -1,0 +1,323 @@
+## -----------------
+## 
+## index_statistic
+## Calculate index for selected period and show statistic along with movement from previous period
+## 
+## vars:
+##   id: _string_ (REQUIRED) - id for the component.
+##   span: _integer_ - Span of the component. Default 24.
+##   size_auto: _boolean_ - Sets layout to flex if set to true. Default null
+##   connectionId: _string_ (REQUIRED) - MongoDB collection connection id.
+##   index: _string_ (REQUIRED) - the index field used to calculate the monthly average on.
+##   index_period: _integer_ - Period over which to calculate the index. Default: 1.
+##   index_name: _string_ (REQUIRED) - the index name used to label the field value.
+##   title_font_size: _integer_ - the font size of the title (the index_name). Default: 18.
+##   subtitle_font_size:  _integer_ - the font size of the subtitle (the movement). Default: 16.
+##   index_font_size: _integer_ - the font size of the index score. Default: 60.
+##   index_font_weight: _integer_ - the font weight of the index score. Default: 200.
+##   hide_movement: _boolean_ - if true, hides the subtitle/ movement part. Default: false.
+## ------------------
+
+id: index_statistic_box_{{ id }}
+type: Box
+layout:
+  contentAlign: middle
+  size:
+    _if:
+      test:
+        _var: size_auto
+      then: auto
+      else: null
+  span:
+    _var:
+      name: span
+      default: 24
+  sm:
+    size: auto
+requests:
+  - id: index_statistic_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - _if:
+            test:
+              _eq:
+                - _var:
+                    name: fytd
+                    default: false
+                - true
+            then:
+              $match:
+                $expr:
+                  $and:
+                    - $lte:
+                        - $Mnt
+                        - _state: end_month
+                    - $gte:
+                        - $financial_year
+                        - $subtract:
+                            - _state: max_financial_year
+                            - 1
+            else:
+              $match:
+                $expr:
+                  $and:
+                    - $lte:
+                        - $Mnt
+                        - _state: end_month
+                    - $gt:
+                        - $Mnt
+                        - $dateFromParts:
+                            year:
+                              $year:
+                                _state: end_month
+                            month: 
+                              $subtract:
+                                - $month:
+                                    _state: end_month
+                                - $multiply:
+                                    - _var:
+                                        name: index_period
+                                        default: 1
+                                    - 2
+        - _if:
+            test:
+              _eq:
+                - _var:
+                    name: fytd
+                    default: false
+                - true
+            then:
+              $addFields:
+                index_period:
+                  $cond:
+                    - $lt:
+                        - $financial_year
+                        - _state: max_financial_year
+                    - Previous
+                    - Current
+            else:
+              $addFields:
+                index_period:
+                  $cond:
+                    - $lte:
+                        - $Mnt
+                        - $dateFromParts:
+                            year:
+                              $year:
+                                _state: end_month
+                            month: 
+                              $subtract:
+                                - $month:
+                                    _state: end_month
+                                - _var:
+                                    name: index_period
+                                    default: 1
+                    - Previous
+                    - Current
+        - $group:
+            _id: 0
+            sample_current:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $index_period
+                      - Current
+                  - 1
+                  - 0
+            index_current:
+              $avg:
+                $cond: 
+                  - $eq:
+                      - $index_period
+                      - Current
+                  - ${{ index }}
+                  - null
+            sample_previous:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $index_period
+                      - Previous
+                  - 1
+                  - 0
+            index_previous:
+              $avg:
+                $cond: 
+                  - $eq:
+                      - $index_period
+                      - Previous
+                  - ${{ index }}
+                  - null
+        - $project:
+            _id: 0
+            sample_current: 1
+            index_current: 1
+            index_difference:
+              $subtract:
+                - $index_current
+                - $index_previous
+
+blocks:
+  - id: index_statistic_title_{{ id }}
+    type: Html
+    properties:
+      html: 
+        _nunjucks:
+          template: |
+            {% raw %}
+            <p style='font-size: {{ font_size }}px; line-height:1; margin: 0; text-align:right;'>
+              {{ index }}
+            </p>
+            {% endraw %}
+          on:
+            font_size:
+              _var:
+                name: title_font_size
+                default: 18
+            index:
+              _var: index_name # Might be an operator so don't use njks
+  - id: index_statistic_score_{{ id }}
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            {% raw %}
+            <p style='font-size:{{ font_size }}px; font-weight: {{ font_weight }}; line-height:1; margin: 5px; text-align:right;'>
+              {{ "-" if score == "loading" else score | round(1) }}
+            </p>
+            {% endraw %}
+          on:
+            font_size:
+              _var:
+                name: index_font_size
+                default: 60
+            font_weight:
+              _var:
+                name: index_font_weight
+                default: 200
+            score:
+              _get:
+                key: 0.index_current
+                from:
+                  _mql_expr:
+                    $ifNull:
+                      - _request: index_statistic_aggregation_{{ id }}
+                      - [{ index_current: 'loading' }]
+  - id: index_statistic_subtitle_box_{{ id }}
+    type: Box
+    layout:
+      contentJustify: end
+    visible:
+      _not:
+        _var:
+          name: hide_movement
+          default: false
+    blocks:
+      - id: index_statistic_movement_icon_{{ id }}
+        type: Icon
+        layout:
+          flex: 0 1 auto
+        style:
+          marginRight: 8
+        properties:
+          name:
+            _mql_expr:
+              expr:
+                $switch:
+                  branches:
+                    - case:
+                        $gt:
+                          - $index_difference
+                          - 0
+                      then: ArrowUpOutlined
+                    - case:
+                        $lt:
+                          - $index_difference
+                          - 0
+                      then: ArrowDownOutlined
+                  default: LoadingOutlined
+              on:
+                _get:
+                  key: '0'
+                  from:
+                    _mql_expr:
+                      $ifNull:
+                        - _request: index_statistic_aggregation_{{ id }}
+                        - [{}]
+          style:
+            color:
+              _mql_expr:
+                expr:
+                  $switch:
+                    branches:
+                      - case:
+                          $gt:
+                            - $index_difference
+                            - 0
+                        then: '#237804'
+                      - case:
+                          $lt:
+                            - $index_difference
+                            - 0
+                        then: '#cf1322'
+                    default: '#212121'
+                on:
+                  _get:
+                    key: '0'
+                    from:
+                      _request: index_statistic_aggregation_{{ id }}
+      - id: index_statistic_sub_title_{{ id }}
+        type: Html
+        layout:
+          flex: 0 1 auto
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                {% raw %}
+                <font style='color: {{ color }}; font-size:{{ font_size }}px' >
+                  {{ movement | abs | round(1) }}
+                </font>
+                <font style='color: {{ color }}; font-size:{{ font_size - 4 }}px' >
+                  from previous period
+                </font>
+                {% endraw %}
+              on:
+                font_size:
+                  _var:
+                    name: subtitle_font_size
+                    default: 16
+                movement:
+                  _get:
+                    key: '0.index_difference'
+                    from:
+                      _request: index_statistic_aggregation_{{ id }}
+                color:
+                  _mql_expr:
+                    expr:
+                      $switch:
+                        branches:
+                          - case:
+                              $gt:
+                                - $index_difference
+                                - 0
+                            then: '#1b5e20'
+                          - case:
+                              $lt:
+                                - $index_difference
+                                - 0
+                            then: '#b71c1c'
+                        default: '#212121'
+                    on:
+                      _get:
+                        key: '0'
+                        from:
+                          _request: index_statistic_aggregation_{{ id }}

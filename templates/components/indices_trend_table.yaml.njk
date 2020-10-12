@@ -1,0 +1,187 @@
+## -----------------
+## 
+## indices_trend_table.yaml
+## Calculate indices and trend table.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   indices: [{_string_: _string_}] - a list of the index fields used to calculate the monthly average on.
+##   index_title: _string_ - the title of the index column
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  size: auto
+requests:
+  - id: indices_trend_table_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $match:
+            $expr:
+              $gte:
+                - $Mnt
+                - $dateFromParts:
+                    year:
+                      $year:
+                        _state: end_month
+                    month: 
+                      $subtract:
+                        - $month:
+                            _state: end_month
+                        - 12
+        - $group:
+            _id: 0
+{% for index in indices %}
+            {{ index.name }}_current:
+              $avg: 
+                $cond:
+                  - $eq:
+                      - $Mnt
+                      - _state: end_month
+                  - ${{ index.field }}
+                  - null
+            {{ index.name }}_previous:
+              $avg: 
+                $cond:
+                  - $eq:
+                      - $Mnt
+                      - $dateFromParts:
+                          year:
+                            $year: 
+                              _state: end_month
+                          month: 
+                            $subtract:
+                              - $month:
+                                  _state: end_month
+                              - 1
+                  - ${{ index.field }}
+                  - null
+            {{ index.name }}_3month:
+              $avg: 
+                $cond:
+                  - $gte:
+                      - $Mnt
+                      - $dateFromParts:
+                          year:
+                            $year: 
+                              _state: end_month
+                          month: 
+                            $subtract:
+                              - $month:
+                                  _state: end_month
+                              - 3
+                  - ${{ index.field }}
+                  - null
+            {{ index.name }}_6month:
+              $avg: 
+                $cond:
+                  - $gte:
+                      - $Mnt
+                      - $dateFromParts:
+                          year:
+                            $year: 
+                              _state: end_month
+                          month: 
+                            $subtract:
+                              - $month:
+                                  _state: end_month
+                              - 6
+                  - ${{ index.field }}
+                  - null
+            {{ index.name }}_12month:
+              $avg: ${{ index.field }}
+            {{ index.name }}_fytd:
+              $avg: 
+                $cond:
+                  - $eq:
+                      - $financial_year
+                      - _state: max_financial_year
+                  - ${{ index.field }}
+                  - null
+{% endfor %}
+        - $project:
+            _id: 0
+        - $project:
+            A:
+{% for index in indices %}
+              - name: {{ index.name }}
+                current: ${{ index.name }}_current
+                change:
+                  $multiply:
+                    - $divide:
+                      - $subtract:
+                          - ${{ index.name }}_current
+                          - ${{ index.name }}_previous
+                      - ${{ index.name }}_current
+                    - 100
+                3month: ${{ index.name }}_3month
+                6month: ${{ index.name }}_6month
+                12month: ${{ index.name }}_12month
+                fytd: ${{ index.name }}_fytd
+{% endfor %}
+blocks:
+  # - id: trend_table_{{ id }}
+  #   type: Markdown
+  #   style:
+  #       '.markdown-body':
+  #         fontSize: 14px
+  #   properties:
+  #     renderHtml: true
+  #     content:
+  #       _nunjucks:
+  #         template: |
+  #           {% raw %}
+  #           | {{ index_title }} | Diff (%) | {{ current_month | date('MMM YYYY') }}|  3 Month | 6 Month | FYtD |
+  #           |-------|:-----:|:-----:|:-----:|:-----:|:-----:|
+  #           {% for index in data -%}
+  #           | {{ index.name }} | {% if index.change < -3 %} <div style='color: #cf1322; font-size: 12px;' > <b>{{ index.change | round(1) }} </b></div> {% elif index.change > 3 %} <div style='color: #389e0d; font-size: 12px;' ><b> +{{ index.change | round(1) }} </b></div> {% else %} <div style='font-size: 12px;' >{{ index.change | round(1) }}</div> {% endif %} |{% for score in [index.current, index.3month, index.6month, index.fytd] %}{% if score < 7.5 %} <div style='background-color: #ffa39e;' > {{ score | round(1) }} </div> {% elif score >= 9 %} <div style='background-color: #b7eb8f;' > {{ score | round(1) }} </div> {% else %} {{ score | round(1) }} {% endif %} |{% endfor %}
+  #           {% endfor -%}
+  #           {% endraw %}
+  #         on:
+  #           index_title:
+  #             _var: index_title
+  #           current_month:
+  #             _state: end_month
+  #           data:
+  #             _get:
+  #               key: '0.A'
+  #               from:
+  #                 _request: indices_trend_table_{{ id }}
+
+  - id: trend_table_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 14px
+    properties:
+      renderHtml: true
+      content:
+        _nunjucks:
+          template: |
+            {% raw %}
+            | {{ index_title }} | Diff (%) | {{ current_month | date('MMM YYYY') }}|  3 Month | 6 Month | FYtD |
+            |-------|:-----:|:-----:|:-----:|:-----:|:-----:|
+            {% for index in data -%}
+            | {{ index.name }} | {% if index.change < -3 %} <div style='color: #cf1322; font-size: 12px;' > <b>{{ index.change | round(1) }} </b></div> {% elif index.change > 3 %} <div style='color: #237804; font-size: 12px;' ><b> +{{ index.change | round(1) }} </b></div> {% else %} <div style='font-size: 12px;' >{{ index.change | round(1) }}</div> {% endif %} |{% for score in [index.current, index.3month, index.6month, index.fytd] %}{% if score < 7.5 %} <div style='color: #cf1322;' ><b> {{ score | round(1) }} </b></div> {% elif score >= 9 %} <div style='color: #237804;' ><b> {{ score | round(1) }} </b></div> {% else %} {{ score | round(1) }} {% endif %} |{% endfor %}
+            {% endfor -%}
+            {% endraw %}
+          on:
+            index_title:
+              _var: index_title
+            current_month:
+              _state: end_month
+            data:
+              _get:
+                key: '0.A'
+                from:
+                  _request: indices_trend_table_{{ id }}

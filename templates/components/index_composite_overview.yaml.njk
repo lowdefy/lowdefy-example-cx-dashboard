@@ -1,0 +1,85 @@
+## -----------------
+## 
+## index_composite_overview
+## Calculate and show index average for current month, 3 months, 6 months and 12 months along with trend micro timeline chart showing max, min and latest values.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   index: _string_ - the index field used to calculate the monthly average on.
+##   chart_height: _number_ - height of the timeline chart.
+##   color: _string_ - color of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: Box
+blocks:
+  - _ref:
+      path: templates/components/index_statistic.yaml.njk
+      vars:
+        id: index_composite_overview_1month_{{ id }}
+        connectionId: {{ connectionId }}
+        index: {{ index }}
+        index_name: 
+          _nunjucks: | 
+            {% raw %}{{ end_month | date("MMMM YYYY") }} {% endraw %}
+        # hide_movement: true
+        span: 9
+  - _ref:
+      path: templates/components/index_statistic.yaml.njk
+      vars:
+        id: index_composite_overview_3month_{{ id }}
+        connectionId: {{ connectionId }}
+        index: {{ index }}
+        index_name: 3 Month
+        index_period: 3
+        hide_movement: true
+        title_font_size: 14
+        index_font_size: 30
+        span: 5
+  - _ref:
+      path: templates/components/index_statistic.yaml.njk
+      vars:
+        id: index_composite_overview_6month_{{ id }}
+        connectionId: {{ connectionId }}
+        index: {{ index }}
+        index_name: 6 Month
+        index_period: 6
+        hide_movement: true
+        title_font_size: 14
+        index_font_size: 30
+        span: 5
+  # - _ref:
+  #     path: templates/components/index_statistic.yaml.njk
+  #     vars:
+  #       id: index_composite_overview_12month_{{ id }}
+  #       connectionId: {{ connectionId }}
+  #       index: {{ index }}
+  #       index_name: 12 Month
+  #       index_period: 12
+  #       hide_movement: true
+  #       title_font_size: 14
+  #       index_font_size: 30
+  #       span: 5
+  - _ref:
+      path: templates/components/index_statistic.yaml.njk
+      vars:
+        id: index_composite_overview_12month_{{ id }}
+        connectionId: {{ connectionId }}
+        index: {{ index }}
+        index_name: FYtD
+        # index_period: 12
+        fytd: true
+        hide_movement: true
+        title_font_size: 14
+        index_font_size: 30
+        span: 5
+  - _ref:
+      path: templates/components/index_trend_microchart.yaml.njk
+      vars:
+        id: index_composite_overview_microchart_{{ id }}
+        connectionId: {{ connectionId }}
+        index: {{ index }}
+        height: {{ chart_height }}
+        color:
+          _var: color

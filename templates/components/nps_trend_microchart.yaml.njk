@@ -1,0 +1,275 @@
+## -----------------
+## 
+## nps_trend_microchart
+## Calculate index and render trend micro timeline chart showing max, min and latest values.
+## 
+## vars:
+##   id: _string_ - id for the chart.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   height: _number_ - height of the timeline chart.
+## ------------------
+
+id: nps_trend_microchart_{{ id }}
+type: AmCharts4XY
+layout:
+  contentAlign: middle
+requests:
+  - id: nps_trend_microchart_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $group:
+            _id: $Mnt
+            detractors:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            promoters:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            sample:
+              $sum:
+                $cond:
+                  - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+        - $addFields:
+            month: $_id
+            percent_promoters:
+              $cond:
+                - $eq:
+                    - $sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $promoters
+                        - $sample
+                    - 100
+            percent_detractors:
+              $cond:
+                - $eq:
+                    - $sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $detractors
+                        - $sample
+                    - 100
+            nps:
+              $cond:
+                - $eq:
+                    - $sample
+                    - 0
+                - null
+                - $subtract:
+                    - $multiply:
+                        - $divide:
+                            - 100
+                            - $sample
+                        - $promoters
+                    - $multiply:
+                        - $divide:
+                            - 100
+                            - $sample
+                        - $detractors
+        - $group:
+            _id: 0
+            all: 
+              $push: $$ROOT
+            max: 
+              $max: $nps
+            min: 
+              $min: $nps
+            max_month:
+              $max: $month
+        - $unwind: $all
+        - $project:
+            month: $all.month
+            nps: $all.nps
+            sample: $all.sample
+            promoters: $all.promoters
+            detractors: $all.detractors
+            percent_promoters: $all.percent_promoters
+            percent_detractors: $all.percent_detractors
+            max: $max
+            min: $min
+            max_month: $max_month
+            opacity:
+              $cond:
+                - $or:
+                    - $eq:
+                      - $all.nps
+                      - $max
+                    - $eq:
+                        - $all.nps
+                        - $min
+                    - $eq:
+                        - $all.month
+                        - $max_month
+                - 1
+                - 0
+        - $sort:
+            month: -1
+
+properties:
+  height:
+    _var: height
+  paddingTop: 0
+  paddingRight: 0
+  paddingBottom: 0
+  paddingLeft: 0
+  marginLeft: 20
+  marginRight: 20
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      - _global: colors.nps.promoter
+      - _global: colors.nps.detractor
+      - _global: colors.nps.nps
+  data:
+    _request: nps_trend_microchart_aggregation_{{ id }}
+  dateFormatter: 
+    dateFormat: MMM yyyy
+  xAxes:
+    - type: DateAxis
+      id: category
+      baseInterval:
+        timeUnit: month
+        count: 1
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  yAxes:
+    - type: ValueAxis
+      # min: 0
+      # max: 100
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: LineSeries
+      name: 'promoters'
+      connect: 
+        $literal: false
+      fill: 
+        type: LinearGradient
+        rotation: 90
+        gradientUnits: userSpaceOnUse
+        stops:
+          - color:
+              _global: colors.nps.promoter
+            opacity: 1
+          - color:
+              _global: colors.nps.promoter
+            opacity: 0
+      fillOpacity: 0.5
+      strokeWidth: 2
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: percent_promoters
+        dateX: month
+        sample: sample
+    - type: LineSeries
+      name: 'detractors'
+      connect: 
+        $literal: false
+      fill: 
+        type: LinearGradient
+        rotation: 90
+        gradientUnits: userSpaceOnUse
+        stops:
+          - color:
+              _global: colors.nps.detractor
+            opacity: 1
+          - color:
+              _global: colors.nps.detractor
+            opacity: 0
+      fillOpacity: 0.5
+      strokeWidth: 2
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: percent_detractors
+        dateX: month
+        sample: sample
+    - type: LineSeries
+      name: 'nps'
+      connect: 
+        $literal: false
+      strokeWidth: 4
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: nps
+        dateX: month
+        sample: sample
+      bullets:
+        # - type: LabelBullet
+        #   label:
+        #     text: "{valueY}"
+        #     dy: -10
+        #     fontSize: 12
+        #     opacity: 0
+        #     propertyFields:
+        #       opacity: opacity
+        - type: CircleBullet
+          tooltipText: "{dateX}\nNPS: {valueY} ({sample} respondents)\nPromoters: {percent_promoters}% ({promoters})\nDetractors: {percent_detractors}% ({detractors})"
+          strokeWidth: 8
+          scale: 0.5
+          circle: 
+            radius: 0
+          dateFormatter: 
+            dateFormat: MMM yyyy
+          states:
+            hover:
+              properties:
+                scale: 1.2
+    

@@ -1,0 +1,45 @@
+## -----------------
+## 
+## indices_composite_table_chart.yaml
+## Calculate indices and render trend timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   index_title: _string_ - the title of the index table column.
+##   indices: [{_string_: _string_}] - a list of the index fields used to calculate the monthly average on.
+##   subindices: [{_string_: _string_}] - a list of the subindex fields used to filter the indices by.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: center
+  contentGutter: [8,0]
+blocks:
+  - _ref:
+      path: templates/components/indices_trend_table.yaml.njk
+      vars:
+        id: {{ id }}_table
+        connectionId: {{ connectionId }}
+        index_title:
+          _var: index_title
+        indices:
+          _var: indices
+  - _ref:
+      path: templates/components/indices_trend_chart_filter.yaml.njk
+      vars:
+        id: {{ id }}_timeline
+        connectionId: {{ connectionId }}
+        height:
+          _var: height
+        span: 12
+        max_y: 10
+        indices:
+          _var: indices
+        subindices:
+          _var: subindices
+        colors:
+          _var: colors

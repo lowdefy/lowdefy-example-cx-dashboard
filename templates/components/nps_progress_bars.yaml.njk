@@ -1,0 +1,161 @@
+## -----------------
+## 
+## nps_progress_bars
+## Calculate nps for selected period and show pie chart with promoter statuses and nps score.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+## ------------------
+
+id: {{ id }}
+type: Box
+requests:
+  - id: nps_progress_bars_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            $and:
+              - published: true
+              - cati_project:
+                  $in:
+                    _state: cati_projects
+              - Mnt:
+                  _state: end_month
+        - $group:
+            _id: 0
+            promoters:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            indifferent:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Indifferent
+                  - 1
+                  - 0
+            detractors:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            count_nps:
+              $sum:
+                $cond:
+                  - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+        - $addFields:
+            percent_promoters:
+              $round:
+                - $multiply:
+                    - $divide:
+                        - $promoters
+                        - $count_nps
+                    - 100
+                - 0
+            percent_indifferent:
+              $round:
+                - $multiply:
+                    - $divide:
+                        - $indifferent
+                        - $count_nps
+                    - 100
+                - 0
+            percent_detractors:
+              $round:
+                - $multiply:
+                    - $divide:
+                        - $detractors
+                        - $count_nps
+                    - 100
+                - 0
+            nps:
+              $multiply:
+                - $divide:
+                    - $subtract:
+                        - $promoters
+                        - $detractors
+                    - $count_nps
+                - 100
+blocks:
+  - id: title_promoters_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 12px
+    properties:
+      content: Promoters
+  - id: promoters_{{ id }}
+    type: Progress
+    properties:
+      showInfo: true
+      status: normal
+      percent:
+        _get:
+          key: 0.percent_promoters
+          from:
+            _mql_expr:
+              $ifNull:
+                - _request: nps_progress_bars_{{ id }}
+                - [{ percent_promoters: 0 }]
+      strokeColor:
+        _global: colors.nps.promoter
+  - id: title_indifferent_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 12px
+    properties:
+      content: Indifferent
+  - id: indifferent_{{ id }}
+    type: Progress
+    properties:
+      showInfo: true
+      status: normal
+      percent:
+        _get:
+          key: 0.percent_indifferent
+          from:
+            _mql_expr:
+              $ifNull:
+                - _request: nps_progress_bars_{{ id }}
+                - [{ percent_indifferent: 0 }]
+      strokeColor:
+        _global: colors.nps.indifferent
+  - id: title_detractors_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 12px
+    properties:
+      content: Detractors
+  - id: detractors_{{ id }}
+    type: Progress
+    properties:
+      showInfo: true
+      status: normal
+      percent:
+        _get:
+          key: 0.percent_detractors
+          from:
+            _mql_expr:
+              $ifNull:
+                - _request: nps_progress_bars_{{ id }}
+                - [{ percent_detractors: 0 }]
+      strokeColor:
+        _global: colors.nps.detractor
+

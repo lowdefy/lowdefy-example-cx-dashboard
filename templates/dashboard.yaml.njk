@@ -1,0 +1,630 @@
+id: {{ page_id }}
+type: PageSiderMenu
+properties:
+  title: {{ dashboard_name }}
+layout:
+  contentGutter: 8
+requests:
+  - id: init
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $group:
+            _id: $Mnt
+            financial_year:
+              $first: $financial_year
+            regions:
+              $addToSet: $region
+        - $sort:
+            _id: -1
+        - $group:
+            _id: 0
+            max_financial_year:
+              $max: $financial_year
+            months:
+              $push:
+                value: $_id
+                label:
+                  $dateToString:
+                    date: $_id
+                    format: '%Y-%m'
+            regions:
+              $addToSet: $regions
+        - $project:
+            _id: 0
+        - $addFields:
+            end_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            max_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            start_month:
+              $arrayElemAt:
+                - $months.value
+                - 2
+            previous_period_end_month:
+              $arrayElemAt:
+                - $months.value
+                - 3
+            previous_period_start_month:
+              $arrayElemAt:
+                - $months.value
+                - 5
+            selected_regions:
+              $filter:
+                input:
+                  $reduce:
+                    input: $regions
+                    initialValue: []
+                    in:
+                      $setUnion:
+                        - $$value
+                        - $$this
+                cond:
+                  $ne:
+                    - $$this
+                    - null
+            region_category_selector:
+              $arrayElemAt:
+                - $filter:
+                    input:
+                      $reduce:
+                        input: $regions
+                        initialValue: []
+                        in:
+                          $setUnion:
+                            - $$value
+                            - $$this
+                    cond:
+                      $ne:
+                        - $$this
+                        - null
+                - 3
+  - id: update_months
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+            Mnt:
+              $lte:
+                _state: filter_selected_month
+        - $group:
+            _id: $Mnt
+            financial_year:
+              $first: $financial_year
+        - $sort:
+            _id: -1
+        - $group:
+            _id: 0
+            max_financial_year:
+              $max: $financial_year
+            months:
+              $push:
+                value: $_id
+                label:
+                  $dateToString:
+                    date: $_id
+                    format: '%Y-%m'
+        - $project:
+            _id: 0
+        - $addFields:
+            end_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            max_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            start_month:
+              $arrayElemAt:
+                - $months.value
+                - 2
+            previous_period_end_month:
+              $arrayElemAt:
+                - $months.value
+                - 3
+            previous_period_start_month:
+              $arrayElemAt:
+                - $months.value
+                - 5
+actions:
+  onInit:
+    - id: set_cati_projects
+      type: SetState
+      params:
+        cati_projects:
+          _var: cati_projects
+    - id: fetch_init
+      type: Fetch
+      params: init
+    - id: set_init
+      type: SetState
+      params:
+        _get:
+          key: '0'
+          from:
+            _request: init
+blocks:
+  - id: filter_drawer
+    type: Drawer
+    layout:
+      contentGutter: 8
+    properties:
+      width: 400px
+    blocks:
+      - id: filter_selected_month
+        type: Selector
+        style:
+          marginTop: 150px
+        properties:
+          title: Report Month
+          placeholder: Select month
+          options:
+            _get:
+              key: '0.months'
+              from:
+                _request: init
+      - id: filter_apply_button
+        type: Button
+        properties:
+          block: true
+          title: Apply
+        actions:
+          onClick:
+            - id: fetch_months
+              type: Fetch
+              params: update_months
+            - id: set_months
+              type: SetState
+              params:
+                _get:
+                  key: '0'
+                  from:
+                    _request: update_months
+            - id: fetch_all
+              type: Fetch
+            - id: close_filter_drawer
+              type: CallMethod
+              params:
+                blockId: filter_drawer
+                method: setOpen
+                args:
+                  open: false
+  - id: questionnaire_modal
+    type: Modal
+    properties:
+      title: {{ dashboard_name }} Questionnaire
+      footer: false
+      width: 700px
+    blocks:
+      - id: questionnaire_text
+        type: Markdown
+        properties:
+          renderHtml: true
+          content:
+            _var: questionnaire
+  - id: csi_explainer_modal
+    type: Modal
+    properties:
+      title: "CSI: Customer Satisfaction Index"
+      footer: false
+      width: 700px
+    blocks:
+      - id: explainer_text
+        type: Markdown
+        properties:
+          renderHtml: true
+          content: |
+            A measurement of the level to which products and/ or services supplied by the company meet customer’s expectations
+
+            #### Calculation
+              - Average of all questions that relate to service touch points, based on a rating scale
+              - Touch points: Unique topics (Indexes) in survey that has relevance to your department (Survey unique to each department)
+              - Rating scale: A score from 0 - 10 (0= poor, 10= excellent)
+  - id: nps_explainer_modal
+    type: Modal
+    properties:
+      title: "NPS: Net Promoter Score"
+      footer: false
+      width: 700px
+    blocks:
+      # - id: explainer_text
+      #   type: Markdown
+      #   properties:
+      #     renderHtml: true
+      #     content:
+      #       _var: questionnaire
+          # - id: nps_description
+          #   type: Markdown
+          #   style:
+          #       '.markdown-body':
+          #         fontSize: 12px
+          #   properties:
+          #     content: |
+          #       The Net Loyalty Score (NLS) is a customer experience metric that measures customer loyalty, and has been show to be a good predictor of future growth. It gives an indication of how many customers are recommending the product and likely to repurchase, how many have no strong feelings, and how many customers are likely to churn and recommending to others not to use the product.
+
+          #       It based on the question "How likely are you to recommend this company to a friend or colleague?", and is calculated by subtracting the percentage of respondents that score 6 or less, from the percentage that score 9 or above.
+          - id: nps_description
+            type: Markdown
+            properties:
+              renderHtml: true
+              content: |
+                <p>NPS is used to measure the net loyalty of customers after an interaction with the company. It ignores customers who were neither 'very happy / unhappy', to establish what percentage of customers are now more loyal to the brand (Promoters) vs those who are now less loyal (Detractors / At Risk).</p>
+                
+                <p>Calculated from the loyalty questions (Q17, Q18, Q19):<br/>
+                <strong style="color: #006100;">Loyal</strong> (Promoters): Number who scored 9+ on <strong>all</strong> loyalty questions,<br/>
+                <strong>minus</strong><br/>
+                <strong style="color: #a10000;">At Risk</strong> (Detractors): Number who scored less than 6 for <strong>any</strong> of the loyalty questions
+                as percentage of sample who answered loyalty questions.</p>
+                <strong>Example: </strong><br/>
+                <strong style="color: #006100;">25 Loyal</strong> customers <em>minus</em> <strong style="color: #a10000;">10 At Risk</strong><span style="color: #a10000;"> </span>customers of <strong>50 Sample</strong><br/>
+                = 15 / 50<br/>
+                = 30% NLS
+  - id: title_box
+    type: Box
+    blocks:
+      - id: title
+        type: Title
+        layout:
+          grow: 1
+          shrink: 1
+          size: auto
+        properties:
+          content: {{ dashboard_name }}
+          level: 4
+      - id: affix_filter_button
+        type: Affix
+        layout:
+          grow: 0
+          shrink: 1
+          size: auto
+          contentGutter: [8,0]
+        properties:
+          offsetTop: 16
+        blocks:
+          - id: survey_button
+            type: Button
+            layout:
+              grow: 0
+              shrink: 1
+              size: auto
+            properties:
+              title: Questionnaire
+              icon: OrderedListOutlined
+              hideActionLoading: true
+              shape: round
+              type: default
+            actions:
+              onClick:
+                - id: open_questionnaire_modal
+                  type: CallMethod
+                  params:
+                    blockId: questionnaire_modal
+                    method: toggleOpen
+          - id: filter_button
+            type: Button
+            layout:
+              grow: 0
+              shrink: 1
+              size: auto
+            properties:
+              title: Filter
+              icon: FilterOutlined
+              hideActionLoading: true
+              shape: round
+            actions:
+              onClick:
+                - id: open_filter_drawer
+                  type: CallMethod
+                  params:
+                    blockId: filter_drawer
+                    method: toggleOpen
+
+  - id: csi_box
+    type: Box
+    layout:
+      span: 12
+      contentGutter: [8,0]
+    blocks:
+      - id: csi_title
+        type: Html
+        layout:
+          size: auto
+        properties:
+          html: '<h4>CSI</h4>'
+      - id: csi_info
+        type: Icon
+        layout:
+          size: auto
+        properties:
+          name: QuestionCircleTwoTone
+          hideActionLoading: true
+        actions:
+          onClick:
+            - id: open_explainer_modal
+              type: CallMethod
+              params:
+                blockId: csi_explainer_modal
+                method: toggleOpen
+      - id: csi_combined_indicator_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/index_composite_overview.yaml.njk
+              vars:
+                id: csi_overview
+                connectionId: {{ connectionId }}
+                index: csi
+                chart_height: 200
+                color:
+                  _global: colors.csi
+
+  - id: nps_box
+    type: Box
+    layout:
+      span: 12
+      contentGutter: [8,0]
+    blocks:
+      - id: nps_title
+        type: Html
+        layout:
+          size: auto
+        properties:
+          html: '<h4>NPS</h4>'
+      - id: nps_info
+        type: Icon
+        layout:
+          size: auto
+        properties:
+          name: QuestionCircleTwoTone
+          hideActionLoading: true
+        actions:
+          onClick:
+            - id: open_explainer_modal
+              type: CallMethod
+              params:
+                blockId: nps_explainer_modal
+                method: toggleOpen
+        
+      - id: nps_card
+        type: Card
+        layout:
+          contentAlign: bottom
+          contentGutter: [20,8]
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - id: nps_statistic_box
+            type: Box
+            layout:
+              span: 10
+            blocks:
+              - _ref:
+                  path: templates/components/nps_statistic.yaml.njk
+                  vars:
+                    id: nps_overview_1month
+                    connectionId: {{ connectionId }}
+                    title: 
+                      _nunjucks: | 
+                        {% raw %}{{ end_month | date("MMMM YYYY") }} {% endraw %}
+          - id: nps_bar_box
+            type: Box
+            layout:
+              span: 14
+            blocks:
+              - _ref:
+                  path: templates/components/nps_progress_bars.yaml.njk
+                  vars:
+                    id: nps_breakdown_1month
+                    connectionId: {{ connectionId }}
+          - id: nps_microchart_box
+            type: Box
+            blocks:
+              - _ref:
+                  path: templates/components/nps_trend_microchart.yaml.njk
+                  vars:
+                    id: nps_microchart
+                    connectionId: {{ connectionId }}
+                    height: 175
+
+  - id: subindices_box
+    type: Box
+    layout:
+      span: 24
+    blocks:
+      - id: subindices_title
+        type: Html
+        properties:
+          html: '<h4>Subindices</h4>'
+      - id: subindices_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/indices_trend_chart.yaml.njk
+              vars:
+                id: {{ page_id }}subindices
+                connectionId: {{ connectionId }}
+                height: 410
+                max_y: 100
+                indices:
+                  _var: subindices
+                colors:
+                  _global: colors.subindices
+
+  - id: elements_box
+    type: Box
+    layout:
+      span: 24
+    blocks:
+      - id: elements_title
+        type: Html
+        properties:
+          html: '<h4>Elements</h4>'
+      - id: elements_card
+        type: Card
+        layout:
+          span: 24
+          contentJustify: center
+          contentGutter: [8,0]
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/indices_composite_table_chart.yaml.njk
+              vars:
+                id: {{ page_id }}_elements
+                connectionId: {{ connectionId }}
+                height: 380
+                indices:
+                  _var: elements
+                index_title: Element
+                subindices:
+                  _var: subindices
+                colors:
+                  _global: colors.elements
+  - id: nps_by_region_box
+    type: Box
+    layout:
+      span: 24
+    blocks:
+      - id: nps_by_region_title
+        type: Html
+        properties:
+          html: '<h4>NPS by region</h4>'
+      - id: nps_region_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/category_chart_filter.yaml.njk
+              vars:
+                id: nps_by_region
+                category: regions
+                options:
+                  _mql_aggregate:
+                    on:
+                      _request: nps_category_aggregation_nps_by_region
+                    pipeline:
+                      - $project:
+                          value: $_id
+                          label: $_id
+                      - $sort:
+                          label: 1
+                chart_block:
+                  _ref:
+                    path: templates/components/nps_category_chart.yaml.njk
+                    vars:
+                      id: nps_by_region
+                      connectionId: {{ connectionId }}
+                      category: region
+                      chart_data:
+                        _mql_aggregate:
+                          on:
+                            _request: nps_category_aggregation_nps_by_region
+                          pipeline:
+                            - $match:
+                                _id:
+                                  $in:
+                                    _state: selected_regions
+
+  - id: csi_by_region_box
+    type: Box
+    layout:
+      span: 24
+    blocks:
+      - id: csi_by_region_title
+        type: Html
+        properties:
+          html: '<h4>CSI by region</h4>'
+      - id: csi_region_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/category_chart_filter.yaml.njk
+              vars:
+                id: csi_by_region
+                category: regions
+                options:
+                  _mql_aggregate:
+                    on:
+                      _request: index_category_aggregation_csi_by_region
+                    pipeline:
+                      - $project:
+                          value: $_id
+                          label: $_id
+                      - $sort:
+                          label: 1
+                chart_block:
+                  _ref:
+                    path: templates/components/index_category_chart.yaml.njk
+                    vars:
+                      id: csi_by_region
+                      connectionId: {{ connectionId }}
+                      category: region
+                      index_field: csi
+                      index_name: CSI
+                      color:
+                        _global: colors.csi
+                      chart_data:
+                        _mql_aggregate:
+                          on:
+                            _request: index_category_aggregation_csi_by_region
+                          pipeline:
+                            - $match:
+                                _id:
+                                  $in:
+                                    _state: selected_regions
+
+  - id: elements_by_region_box
+    type: Box
+    blocks:
+      - id: elements_by_region_title
+        type: Html
+        properties:
+          html: '<h4>Elements by region</h4>'
+      - id: elements_by_region_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/indices_category_chart.yaml.njk
+              vars:
+                id: elements_by_region
+                connectionId: {{ connectionId }}
+                category: region
+                category_name: Region
+                max_y: 10
+                indices:
+                  _var: elements
+                colors:
+                  _global: colors.elements

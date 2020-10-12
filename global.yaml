@@ -1,0 +1,23 @@
+company_logo: https://s3.amazonaws.com/mrmapp-public/companies/CONGOEQUIP/CONGOEQUIP_logo.png
+colors:
+  nps:
+    promoter: '#43a047'
+    indifferent: '#546e7a'
+    detractor: '#fb8c00'
+    nps: '#263238'
+  csi: '#0480ff'
+  subindices:
+    - "#5D7092"
+    - "#5AD8A6"
+    - "#9270CA"
+    - "#5B8FF9"
+  elements:
+    - '#5B8FF9'
+    - '#E8684A'
+    - '#9270CA'
+    - '#269A99'
+    - '#5AD8A6'
+    - '#F6BD16'
+    - '#6DC8EC'
+    - '#FF9D4D'
+financial_year_start: 2020-01-01

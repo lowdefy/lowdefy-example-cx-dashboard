@@ -1,0 +1,279 @@
+## -----------------
+## 
+## index_year_on_year_microchart
+## Calculate index and render month category micro chart showing current values.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   index: _string_ - the index field used to calculate the monthly average on.
+##   height: _number_ - height of the category chart.
+##   colors: [_string_] - list of colors to for year on year lines, latest year is last in the list.
+## ------------------
+id: {{ id }}
+type: AmCharts4XY
+requests:
+  - id: index_year_on_year_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $group:
+            _id: $Mnt
+            index:
+              $avg: ${{ index }}
+        - $addFields:
+            month_of_year:
+              $month: $_id
+            cutoff_year:
+              $subtract:
+                - $year:
+                    _state: end_month
+                - 2
+            year:
+              $year: $_id
+        - $match:
+            $expr:
+              $gte:
+                - $year
+                - $cutoff_year
+        - $group:
+            _id: $month_of_year
+            index:
+              $push:
+                k:
+                  $toString: $year
+                v:
+                  $ifNull:
+                    - $index
+                    - null
+        - $sort:
+            _id: 1
+        - $addFields:
+            radius:
+              $cond:
+                - $eq:
+                    - $_id
+                    - $month:
+                        _state: end_month
+                - 8
+                - 2
+            opacity:
+              $cond:
+                - $eq:
+                    - $_id
+                    - $month:
+                        _state: end_month
+                - 1
+                - 0
+            month:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - $_id
+                        - 1
+                    then: Jan
+                  - case:
+                      $eq:
+                        - $_id
+                        - 2
+                    then: Feb
+                  - case:
+                      $eq:
+                        - $_id
+                        - 3
+                    then: Mar
+                  - case:
+                      $eq:
+                        - $_id
+                        - 4
+                    then: Apr
+                  - case:
+                      $eq:
+                        - $_id
+                        - 5
+                    then: May
+                  - case:
+                      $eq:
+                        - $_id
+                        - 6
+                    then: Jun
+                  - case:
+                      $eq:
+                        - $_id
+                        - 7
+                    then: Jul
+                  - case:
+                      $eq:
+                        - $_id
+                        - 8
+                    then: Aug
+                  - case:
+                      $eq:
+                        - $_id
+                        - 9
+                    then: Sep
+                  - case:
+                      $eq:
+                        - $_id
+                        - 10
+                    then: Oct
+                  - case:
+                      $eq:
+                        - $_id
+                        - 11
+                    then: Nov
+                  - case:
+                      $eq:
+                        - $_id
+                        - 12
+                    then: Dec
+                default: ''
+        - $replaceRoot:
+            newRoot:
+              $mergeObjects:
+                - month: $month
+                  radius: $radius
+                  opacity: $opacity
+                - $arrayToObject: $index
+properties:
+  height:
+    _var: chart_height
+  paddingTop: 0
+  paddingRight: 0
+  paddingBottom: 0
+  paddingLeft: 0
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      _var: colors
+  data:
+    _request: index_year_on_year_aggregation_{{ id }}
+  legend:
+    type: Legend
+    position: bottom
+    contentAlign: right
+    fontSize: 10
+    maxWidth: 100
+    valueText: ''
+    itemContainers: 
+      width: 40
+      paddingTop: 0
+      paddingBottom: 0
+      paddingLeft: -15
+      paddingRight: 0
+  xAxes:
+    - type: CategoryAxis
+      id: category
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+
+  yAxes:
+    - type: ValueAxis
+      # min: 0
+      # max: 100
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+      cursorTooltipEnabled: false
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    _mql_aggregate:
+      on:
+        _request: index_year_on_year_aggregation_{{ id }}
+      pipeline:
+        - $project:
+            obj:
+              $objectToArray: $$ROOT
+        - $unwind:
+            path: $obj
+        - $group:
+            _id: $obj.k
+            year: 
+              $first:
+                $obj.k
+            sum:
+              $sum: $obj.v
+        - $match:
+            sum:
+              $ne: 0
+        - $match:
+            _id:
+              $ne: radius
+        - $match:
+            _id:
+              $ne: opacity
+        - $match:
+            _id:
+              $ne: strokeWidth
+        - $sort:
+            _id: 1
+        - $project:
+            _id: 0
+            type: LineSeries
+            name: $_id
+            connect: 
+              $literal: false
+            # fillOpacity: 
+            #   $literal: 0.3
+            strokeWidth: 
+              $literal: 4
+            tensionX: 
+              $literal: 0.9
+            tensionY: 
+              $literal: 0.9
+            legendSettings:
+              itemValueText: ''
+            dataFields:
+              valueY: $_id
+              categoryX: month
+            bullets:
+              $literal:
+                - type: LabelBullet
+                  label:
+                    text: "{valueY}"
+                    dy: -10
+                    fontSize: 12
+                    opacity: 0
+                    propertyFields:
+                      opacity: opacity
+                - type: CircleBullet
+                  tooltipText: "{valueY} for {name}"
+                  strokeWidth: 8
+                  scale: 0.5
+                  circle: 
+                    opacity: 1
+                    radius: 0
+                    propertyFields:
+                      radius: radius 
+                  states:
+                    hover:
+                      properties:
+                        scale: 1.2

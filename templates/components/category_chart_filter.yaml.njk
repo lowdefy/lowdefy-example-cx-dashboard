@@ -1,0 +1,28 @@
+## -----------------
+## 
+## category_chart_filter.yaml
+## Calculate and filter by category.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   category: _string_ - The category to group by.
+##   options: [_string_] - The selector options.
+##   chart_block: _object_ - The chart block.
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: center
+blocks:
+  - id: {{ id }}_category_selector
+    type: CheckboxSelector
+    field: selected_{{ category }}
+    layout:
+      size: auto
+    properties:
+      label:
+        disabled: true
+      options:
+        _var: options
+  - _var: chart_block

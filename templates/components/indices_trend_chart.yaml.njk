@@ -1,0 +1,213 @@
+## -----------------
+## 
+## indices_trend_chart.yaml
+## Calculate indices and render trend timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   span: _integer_ - Span of the component. Default 24.
+##   indices: [{_string_: _string_}] - a list of the index fields used to calculate the monthly average on.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+layout:
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: indices_trend_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $match:
+            $expr:
+              $gte:
+                - $Mnt
+                - $dateFromParts:
+                    year:
+                      $year:
+                        _state: end_month
+                    month: 
+                      $subtract:
+                        - $month:
+                            _state: end_month
+                        - 12
+        - $group:
+            _id: $Mnt
+{% for index in indices %}
+            {{ index.name }}:
+              $avg: ${{ index.field }}
+{% endfor %}
+        - $addFields:
+            A:
+{% for index in indices %}
+              - name: {{ index.name }}
+                score: ${{ index.name }}
+{% endfor %}
+            opacity:
+              $cond:
+                - $eq:
+                    - $_id
+                    - _state: end_month
+                - 1
+                - 0
+        - $project:
+            _id: 0
+            month: $_id
+            opacity: 1
+            all:
+              $reduce:
+                input: $A
+                initialValue: ""
+                in:
+                  $cond:
+                    - $eq:
+                        - $$value
+                        - ""
+                    - $concat:
+                        - $$this.name
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.score
+                              - 1
+                        - "[/]"
+                    - $concat:
+                        - $$value
+                        - "\n"
+                        - $$this.name
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.score
+                              - 1
+                        - "[/]"
+{% for index in indices %}
+            {{ index.name }}:  ${{ index.name }}
+{% endfor %}
+        - $sort:
+            month: -1
+
+properties:
+  height: 
+    _var: height
+  paddingRight: 0
+  # paddingBottom: 0
+  paddingLeft: 0
+  marginLeft: 20
+  marginRight: 20
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      _var: colors
+  data:
+    _request: indices_trend_aggregation_{{ id }}
+  legend:
+    type: Legend
+    position: bottom
+    contentAlign: right
+    fontSize: 12
+    # maxWidth: 100
+    itemContainers: 
+      # width: 40
+      # paddingTop: 0
+      paddingBottom: 0
+      paddingLeft: -15
+      paddingRight: 0
+  dateFormatter: 
+    dateFormat: MMM yyyy
+  xAxes:
+    - type: DateAxis
+      id: category
+      baseInterval:
+        timeUnit: month
+        count: 1
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  yAxes:
+    - type: ValueAxis
+      # min: 0
+      extraMin: 0.1
+      max:
+        _var: max_y
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      # renderer:
+      #   grid:
+      #     disabled: true
+      #   labels:
+      #     disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+{% for index in indices %}
+    - type: LineSeries
+      name: {{ index.name }}
+      # name: CSE
+      connect: false
+      # fillOpacity: 0.5
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: {{ index.name }}
+        dateX: month
+        all: all
+{% if loop.first %}
+      strokeWidth: 6
+      bullets:
+        # - type: LabelBullet
+        #   label:
+        #     text: "{valueY}"
+        #     dy: -10
+        #     fontSize: 12
+        #     opacity: 0
+        #     propertyFields:
+        #       opacity: opacity
+        - type: CircleBullet
+          tooltipText: "{all}"
+          strokeWidth: 8
+          scale: 0.5
+          circle: 
+            radius: 0
+          dateFormatter: 
+            dateFormat: MMM yyyy
+          states:
+            hover:
+              properties:
+                scale: 1.2
+{% else %}
+      strokeWidth: 2
+{% endif %}
+{% endfor %}
+        

@@ -1,0 +1,7 @@
+id: default
+links:
+  - id: parts
+    type: MenuLink
+    pageId: parts
+    properties:
+      title: Parts

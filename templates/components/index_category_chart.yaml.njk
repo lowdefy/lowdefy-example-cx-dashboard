@@ -1,0 +1,167 @@
+## -----------------
+## 
+## index_category_chart
+## Calculate index by category. Show sample size and index for each category.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   category: _string_ - The category to group by.
+##   index_field: _string_ - The index field to calculate.
+##   index_name: _string_ - The index name to display.
+## ------------------
+
+id: index_category_chart_{{ id }}
+type: AmCharts4XY
+requests:
+  - id: index_category_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            $and:
+              - published: true
+              - cati_project:
+                  $in:
+                    _state: cati_projects
+              - Mnt:
+                  $gte:
+                    _state: start_month
+              - Mnt:
+                  $lte:
+                    _state: end_month
+        - $group:
+            _id: ${{ category }}
+            index:
+              $avg:
+                ${{ index_field }}
+            count:
+              $sum:
+                $cond:
+                  - $ne:
+                      - ${{ index_field }}
+                      - null
+                  - 1
+                  - 0
+        - $match:
+            _id:
+              $ne: null
+        - $sort:
+            index: -1
+properties:
+  data:
+    _var:
+      name: chart_data
+      default:
+        _request: index_category_aggregation_{{ id }}
+  numberFormatter:
+    numberFormat: "#.#"
+  legend:
+    type: Legend
+    useDefaultMarker: true
+    markers:
+      width: 15
+      height: 15
+      children:
+        fillOpacity: 0.5
+    fontSize: 12
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+  xAxes:
+    - type: CategoryAxis
+      id: category
+      cursorTooltipEnabled: false
+      dataFields:
+        category: _id
+      renderer:
+        minGridDistance: 20
+        grid:
+          location: 0
+        labels:
+          contentAlign: right
+          rotation: -60
+          fontSize: 12
+          verticalCenter: middle
+          horizontalCenter: right
+  yAxes:
+    - type: ValueAxis
+      id: index
+      title:
+        text: Score
+        fontSize: 12
+      renderer:
+        minGridDistance: 20
+        labels:
+          fontSize: 12
+      cursorTooltipEnabled: false
+      extraMin: 0.2
+      # max:
+      #   _var: max_y
+    - type: ValueAxis
+      id: sample
+      syncWithAxis: index
+      title:
+        text: Sample
+        fontSize: 12
+      renderer:
+        opposite: true
+        minGridDistance: 20
+        labels:
+          fontSize: 12
+          numberFormatter:
+            numberFormat: "#"
+      cursorTooltipEnabled: false
+      min: 0
+      maxPrecision: 0
+  series:
+    - type: ColumnSeries
+      name: {{ index_name }}
+      yAxis: index
+      fill:
+        _var: color
+      stroke:
+        _var: color
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: index
+        count: count
+      columns:
+        tooltipText: '{name}: {valueY} ({count})'
+    - type: ColumnSeries
+      name: Sample
+      yAxis: sample
+      clustered: false
+      stroke: '#263238'
+      fill: '#263238'
+      fillOpacity: 1
+      dataFields:
+        categoryX: _id
+        valueY: count
+      columns:
+        strokeWidth: 0
+        fillOpacity: 0
+      bullets:
+        - type: Bullet
+          width: 100%
+          children:
+            - type: Rectangle
+              width: 100%
+              height: 3
+              horizontalCenter: middle
+              verticalCenter: middle
+              stroke: '#263238'
+              fill: '#263238'
+        - type: LabelBullet
+          label:
+            text: "{valueY}"
+            dy: -10
+            fontSize: 10

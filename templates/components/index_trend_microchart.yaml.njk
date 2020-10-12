@@ -1,0 +1,212 @@
+## -----------------
+## 
+## index_trend_microchart
+## Calculate index and render trend micro timeline chart showing max, min and latest values.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   index: _string_ - the index field used to calculate the monthly average on.
+##   height: _number_ - height of the timeline chart.
+##   color: _string_ - color of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+requests:
+  - id: index_trend_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $group:
+            _id: $Mnt
+            month: 
+              $first: $Mnt
+            index:
+              $avg: ${{ index }}
+            sample:
+              $sum: 1
+        - $group:
+            _id: 0
+            all: 
+              $push: 
+                root: $$ROOT
+            max: 
+              $max: $index
+            min: 
+              $min: $index
+            max_month:
+              $max: $month
+        - $unwind: $all
+        - $project:
+            month: $all.root.month
+            index: $all.root.index
+            sample: $all.root.sample
+            max: $max
+            min: $min
+            max_month: $all.max_month
+            # text:
+            #   - $cond:
+            #       - $eq:
+            #         - $all.root.index
+            #         - $max
+            #       - $concat:  
+            #           - 'Highest: '
+            #           - $toString:
+            #               $divide:
+            #                 - $ceil:
+            #                     $multiply: 
+            #                       - $all.root.index
+            #                       - 10
+            #                 - 10
+            #       - $cond:
+            #           - $eq:
+            #             - $all.root.index
+            #             - $min
+            #           - $concat:  
+            #             - 'Lowest: '
+            #             - $toString:
+            #                 $divide:
+            #                   - $floor:
+            #                       $multiply: 
+            #                         - $all.root.index
+            #                         - 10
+            #                   - 10
+            #           - $cond:
+            #               - $eq:
+            #                 - $all.root.month
+            #                 - $max_month
+            #               - $concat:  
+            #                 - 'Latest: '
+            #                 - $toString:
+            #                     $divide:
+            #                       - $floor:
+            #                           $multiply: 
+            #                             - $all.root.index
+            #                             - 10
+            #                       - 10
+            #               - false
+            opacity:
+              $cond:
+                - $or:
+                    - $eq:
+                      - $all.root.index
+                      - $max
+                    - $eq:
+                        - $all.root.index
+                        - $min
+                    - $eq:
+                        - $all.root.month
+                        - $max_month
+                - 1
+                - 0
+        - $sort:
+            month: -1
+
+properties:
+  height: 
+    _var: height
+  paddingTop: 0
+  paddingRight: 0
+  paddingBottom: 0
+  paddingLeft: 0
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      - _var: color
+  data:
+    _request: index_trend_aggregation_{{ id }}
+  dateFormatter: 
+    dateFormat: MMM yyyy
+  xAxes:
+    - type: DateAxis
+      id: category
+      baseInterval:
+        timeUnit: month
+        count: 1
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  yAxes:
+    - type: ValueAxis
+      # min: 0
+      # max: 100
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: LineSeries
+      name: '2018'
+      connect: false
+      fill: 
+        type: LinearGradient
+        rotation: 90
+        gradientUnits: userSpaceOnUse
+        stops:
+          - color: 
+              _var: color
+            opacity: 1
+          - color: 
+              _var: color
+            opacity: 0
+      fillOpacity: 0.5
+      strokeWidth: 4
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: index
+        dateX: month
+        sample: sample
+      bullets:
+        - type: LabelBullet
+          label:
+            text: "{valueY}"
+            dy: -10
+            fontSize: 12
+            opacity: 0
+            propertyFields:
+              opacity: opacity
+        - type: CircleBullet
+          tooltipText: "{dateX}\nScore {valueY}\nSample of {sample}"
+          strokeWidth: 8
+          scale: 0.5
+          circle: 
+            radius: 0
+          dateFormatter: 
+            dateFormat: MMM yyyy
+          states:
+            hover:
+              properties:
+                scale: 1.2
+        

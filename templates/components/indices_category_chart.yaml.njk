@@ -1,0 +1,407 @@
+## -----------------
+## 
+## indices_category_chart.yaml
+## Calculate indices and render trend timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   span: _integer_ - Span of the component. Default 24.
+##   category: _string_ - The category to group by.
+##   category_name: _string_ - The category name to display.
+##   indices: [{_string_: _string_}] - a list of the index fields used to calculate the monthly average on.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: end
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: indices_category_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in: 
+                _state: cati_projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month: 
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - 12
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+        - $project:
+            category: ${{ category }}
+            Mnt: 1
+            financial_year: 1
+            period:
+              $subtract:
+                - _state: end_month
+                - $Mnt
+            
+            indices:
+{% for index in indices %}
+              - score:
+                  $ifNull: 
+                    - ${{ index.field }}
+                    - null
+                index: {{ index.name }}
+{% endfor %}
+        - $unwind:
+            path: $indices
+        - $match:
+            indices.score:
+              $ne: null
+            category:
+              $ne: null
+        - $facet:
+            indices:
+              - $group:
+                  _id:
+                    category: $category
+                    index: $indices.index
+                  sample_1month:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $Mnt
+                          - _state: end_month
+                        - 1
+                        - 0
+                  sample_3month:
+                    $sum:
+                      $cond:
+                        - $lt:
+                          - $period
+                          - $multiply: [1000,60,60,24,31,3]
+                        - 1
+                        - 0
+                  sample_6month:
+                    $sum:
+                      $cond:
+                        - $lt:
+                          - $period
+                          - $multiply: [1000,60,60,24,31,6]
+                        - 1
+                        - 0
+                  sample_12month:
+                    $sum: 1
+                  sample_fytd:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $financial_year
+                          - _state: max_financial_year
+                        - 1
+                        - 0
+
+                  score_1month:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $Mnt
+                          - _state: end_month
+                        - $indices.score
+                        - null
+                  score_3month:
+                    $avg:
+                      $cond:
+                        - $lt:
+                          - $period
+                          - $multiply: [1000,60,60,24,31,3]
+                        - $indices.score
+                        - null
+                  score_6month:
+                    $avg:
+                      $cond:
+                        - $lt:
+                          - $period
+                          - $multiply: [1000,60,60,24,31,6]
+                        - $indices.score
+                        - null
+                  score_12month:
+                    $avg: $indices.score
+                  score_fytd:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $financial_year
+                          - _state: max_financial_year
+                        - $indices.score
+                        - null
+            overall:
+              - $group:
+                  _id:
+                    index: $indices.index
+                  score_1month:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $Mnt
+                          - _state: end_month
+                        - $indices.score
+                        - null
+                  score_3month:
+                    $avg:
+                      $cond:
+                        - $lt:
+                          - $period
+                          - $multiply: [1000,60,60,24,31,3]
+                        - $indices.score
+                        - null
+                  score_6month:
+                    $avg:
+                      $cond:
+                        - $lt:
+                          - $period
+                          - $multiply: [1000,60,60,24,31,6]
+                        - $indices.score
+                        - null
+                  score_12month:
+                    $avg: $indices.score
+                  score_fytd:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $financial_year
+                          - _state: max_financial_year
+                        - $indices.score
+                        - null
+        - $unwind:
+            path: $indices
+        - $addFields:
+            overall:
+              $filter:
+                input: $overall
+                cond:
+                  $eq:
+                    - $$this._id.index
+                    - $indices._id.index
+        - $unwind:
+            path: $overall
+        - $addFields:
+            indices.category: $indices._id.category
+            indices.index: $indices._id.index
+            indices.overall_score_1month: $overall.score_1month
+            indices.overall_score_3month: $overall.score_3month
+            indices.overall_score_6month: $overall.score_6month
+            indices.overall_score_12month: $overall.score_12month
+            indices.overall_score_fytd: $overall.score_fytd
+        - $replaceRoot:
+            newRoot: $indices
+        - $project:
+            _id: 0
+        - $match:
+            sample_3month:
+              $gt: 0
+        - $sort:
+            index: 1
+            score_3month: 1
+blocks:
+  - id: {{ category }}_category_selector
+    type: Selector
+    layout:
+      size: 200
+    properties:
+      title:
+        _var: category_name
+      label:
+        inline: true
+      size: small
+      allowClear: false
+      options:
+        _mql_aggregate:
+          on:
+            _request: indices_category_aggregation_{{ id }}
+          pipeline:
+            - $group:
+                _id: $category
+            - $project:
+                value: $_id
+                label: $_id
+            - $sort:
+                label: 1
+  - id: {{ id }}_chart
+    type: AmCharts4XY
+    properties:
+      # height: 
+      #   _var: height
+      paddingRight: 0
+      # paddingBottom: 0
+      paddingLeft: 0
+      marginLeft: 20
+      marginRight: 20
+      numberFormatter:
+        numberFormat: "#.#"
+      colors:
+        list:
+          _var: colors
+      data:
+        # _request: indices_category_aggregation_{{ id }}
+        _mql_aggregate:
+          on:
+            _request: indices_category_aggregation_{{ id }}
+          pipeline:
+            - $match:
+                category:
+                  _state: {{ category }}_category_selector
+            - $addFields:
+                all:
+                  $concat:
+                    - "Company FYtD: [bold]"
+                    - $toString: 
+                        $ifNull:
+                          - $round:
+                            - $overall_score_fytd
+                            - 1
+                          - ""
+                    - "[/]\n"
+                    - "1 Month: [bold]"
+                    - $toString: 
+                        $ifNull:
+                          - $round:
+                            - $score_1month
+                            - 1
+                          - ""
+                    - "[/]\n"
+                    - "3 Months: [bold]"
+                    - $toString: 
+                        $round:
+                          - $score_3month
+                          - 1
+                    - "[/]\n"
+                    - _var: category_name
+                    - " FYtD: [bold]"
+                    - $toString: 
+                        $round:
+                          - $score_fytd
+                          - 1
+                    - "[/]\n"
+      legend:
+        type: Legend
+        position: bottom
+        # useDefaultMarker: true
+        fontSize: 12
+        # maxWidth: 100
+        itemContainers: 
+          # width: 40
+          # paddingTop: 0
+          paddingBottom: 0
+          paddingLeft: -15
+          paddingRight: 0
+      xAxes:
+        - type: CategoryAxis
+          id: category
+          cursorTooltipEnabled: false
+          dataFields:
+            category: index
+          renderer:
+            minGridDistance: 20
+            grid:
+              location: 0
+            labels:
+              contentAlign: right
+              rotation: -60
+              fontSize: 12
+              verticalCenter: middle
+              horizontalCenter: right
+      yAxes:
+        - type: ValueAxis
+          extraMin: 0.1
+          max:
+            _var: max_y
+          cursorTooltipEnabled: false
+          title:
+            disabled: true
+          # renderer:
+          #   grid:
+          #     disabled: true
+          #   labels:
+          #     disabled: true
+      cursor:
+        type: XYCursor
+        xAxis: category
+        fullWidthLineX: true
+        lineX:
+          fill: #607d8b
+          fillOpacity: 0.1
+        lineY:
+          disabled: true
+
+      series:
+        - type: ColumnSeries
+          name: 1 Month
+          # fill:
+          #   _var: color
+          # stroke:
+          #   _var: color
+          fillOpacity: 0.5
+          dataFields:
+            categoryX: index
+            valueY: score_1month
+          legendSettings:
+            itemValueText: '{valueY}'
+          # columns:
+          #   tooltipText: '{name}: {valueY}'
+        - type: ColumnSeries
+          name: 3 Months
+          # fill:
+          #   _var: color
+          # stroke:
+          #   _var: color
+          fillOpacity: 0.5
+          dataFields:
+            categoryX: index
+            valueY: score_3month
+          legendSettings:
+            itemValueText: '{valueY}'
+          # columns:
+          #   tooltipText: '{name}: {valueY}'
+        - type: ColumnSeries
+          name: {{ category_name }} FYtD
+          # fill:
+          #   _var: color
+          # stroke:
+          #   _var: color
+          fillOpacity: 0.5
+          dataFields:
+            categoryX: index
+            valueY: score_fytd
+          legendSettings:
+            itemValueText: '{valueY}'
+          # columns:
+          #   tooltipText: '{name}: {valueY}'
+        - type: LineSeries
+          name: Company FYtD
+          connect: false
+          strokeWidth: 4
+          tensionX: 0.9
+          tensionY: 0.9
+          legendSettings:
+            itemValueText: '{valueY}'
+          dataFields:
+            valueY: overall_score_fytd
+            categoryX: index
+            all: all
+          tooltipText: '{all}'

@@ -1,0 +1,373 @@
+## -----------------
+## 
+## nps_statistic
+## Calculate nps for selected period and show statistic along with movement from previous period
+## 
+## vars:
+##   id: _string_ (REQUIRED) - id for the component.
+##   span: _integer_ - Span of the component. Default 24.
+##   size_auto: _boolean_ - Sets layout to flex if set to true. Default null
+##   connectionId: _string_ (REQUIRED) - MongoDB collection connection id.
+##   period: _integer_ - Period over which to calculate the nps. Default: 1.
+##   title: _string_ (REQUIRED) - the index name used to label the field value.
+##   title_font_size: _integer_ - the font size of the title (the title). Default: 18.
+##   subtitle_font_size:  _integer_ - the font size of the subtitle (the movement). Default: 16.
+##   score_font_size: _integer_ - the font size of the index score. Default: 60.
+##   score_font_weight: _integer_ - the font weight of the index score. Default: 200.
+##   hide_movement: _boolean_ - if true, hides the subtitle/ movement part. Default: false.
+## ------------------
+
+id: nps_statistic_box_{{ id }}
+type: Box
+layout:
+  contentAlign: middle
+  size:
+    _if:
+      test:
+        _var: size_auto
+      then: auto
+      else: null
+  span:
+    _var:
+      name: span
+      default: 24
+  sm:
+    size: auto
+requests:
+  - id: nps_statistic_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+            promoter:
+              $ne: null
+        - _if:
+            test:
+              _eq:
+                - _var:
+                    name: fytd
+                    default: false
+                - true
+            then:
+              $match:
+                $expr:
+                  $and:
+                    - $lte:
+                        - $Mnt
+                        - _state: end_month
+                    - $gte:
+                        - $financial_year
+                        - $subtract:
+                            - _state: max_financial_year
+                            - 1
+            else:
+              $match:
+                $expr:
+                  $and:
+                    - $lte:
+                        - $Mnt
+                        - _state: end_month
+                    - $gt:
+                        - $Mnt
+                        - $dateFromParts:
+                            year:
+                              $year:
+                                _state: end_month
+                            month: 
+                              $subtract:
+                                - $month:
+                                    _state: end_month
+                                - $multiply:
+                                    - _var:
+                                        name: period
+                                        default: 1
+                                    - 2
+        - _if:
+            test:
+              _eq:
+                - _var:
+                    name: fytd
+                    default: false
+                - true
+            then:
+              $addFields:
+                period:
+                  $cond:
+                    - $lt:
+                        - $financial_year
+                        - _state: max_financial_year
+                    - Previous
+                    - Current
+            else:
+              $addFields:
+                period:
+                  $cond:
+                    - $lte:
+                        - $Mnt
+                        - $dateFromParts:
+                            year:
+                              $year:
+                                _state: end_month
+                            month: 
+                              $subtract:
+                                - $month:
+                                    _state: end_month
+                                - _var:
+                                    name: period
+                                    default: 1
+                    - Previous
+                    - Current
+        - $group:
+            _id: 0
+            sample_current:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $period
+                      - Current
+                  - 1
+                  - 0
+            promoters_current:
+              $sum:
+                $cond: 
+                  - $and:
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                      - $eq:
+                          - $period
+                          - Current
+                  - 1
+                  - 0
+            detractors_current:
+              $sum:
+                $cond: 
+                  - $and:
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                      - $eq:
+                          - $period
+                          - Current
+                  - 1
+                  - 0
+            sample_previous:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $period
+                      - Previous
+                  - 1
+                  - 0
+            promoters_previous:
+              $sum:
+                $cond: 
+                  - $and:
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                      - $eq:
+                          - $period
+                          - Previous
+                  - 1
+                  - 0
+            detractors_previous:
+              $sum:
+                $cond: 
+                  - $and:
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                      - $eq:
+                          - $period
+                          - Previous
+                  - 1
+                  - 0
+        - $addFields:
+            nps_current:
+              $multiply:
+                - $divide:
+                    - $subtract:
+                        - $promoters_current
+                        - $detractors_current
+                    - $sample_current
+                - 100
+            nps_previous:
+              $multiply:
+                - $divide:
+                    - $subtract:
+                        - $promoters_previous
+                        - $detractors_previous
+                    - $sample_previous
+                - 100
+        - $project:
+            _id: 0
+            nps_current: 1
+            nps_previous: 1
+            nps_difference:
+              $subtract:
+                - $nps_current
+                - $nps_previous
+
+blocks:
+  - id: nps_statistic_title_{{ id }}
+    type: Html
+    properties:
+      html: 
+        _nunjucks:
+          template: |
+            {% raw %}
+            <p style='font-size: {{ font_size }}px; line-height:1; margin: 0; text-align:right;'>
+              {{ title }}
+            </p>
+            {% endraw %}
+          on:
+            font_size:
+              _var:
+                name: title_font_size
+                default: 18
+            title:
+              _var: title # Might be an operator so don't use njks
+  - id: nps_statistic_score_{{ id }}
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            {% raw %}
+            <p style='font-size:{{ font_size }}px; font-weight: {{ font_weight }}; line-height:1; margin: 5px; text-align:right;'>
+              {{ "-" if score == "loading" else score | round(1) }}
+            </p>
+            {% endraw %}
+          on:
+            font_size:
+              _var:
+                name: score_font_size
+                default: 60
+            font_weight:
+              _var:
+                name: score_font_weight
+                default: 200
+            score:
+              _get:
+                key: 0.nps_current
+                from:
+                  _mql_expr:
+                    $ifNull:
+                      - _request: nps_statistic_aggregation_{{ id }}
+                      - [{ nps_current: 'loading' }]
+  - id: nps_statistic_subtitle_box_{{ id }}
+    type: Box
+    layout:
+      contentJustify: end
+    visible:
+      _not:
+        _var:
+          name: hide_movement
+          default: false
+    blocks:
+      - id: nps_statistic_movement_icon_{{ id }}
+        type: Icon
+        layout:
+          flex: 0 1 auto
+        style:
+          marginRight: 8
+        properties:
+          name:
+            _mql_expr:
+              expr:
+                $switch:
+                  branches:
+                    - case:
+                        $gt:
+                          - $nps_difference
+                          - 0
+                      then: ArrowUpOutlined
+                    - case:
+                        $lt:
+                          - $nps_difference
+                          - 0
+                      then: ArrowDownOutlined
+                  default: LoadingOutlined
+              on:
+                _get:
+                  key: '0'
+                  from:
+                    _mql_expr:
+                      $ifNull:
+                        - _request: nps_statistic_aggregation_{{ id }}
+                        - [{}]
+          style:
+            color:
+              _mql_expr:
+                expr:
+                  $switch:
+                    branches:
+                      - case:
+                          $gt:
+                            - $nps_difference
+                            - 0
+                        then: '#237804'
+                      - case:
+                          $lt:
+                            - $nps_difference
+                            - 0
+                        then: '#cf1322'
+                    default: '#212121'
+                on:
+                  _get:
+                    key: '0'
+                    from:
+                      _request: nps_statistic_aggregation_{{ id }}
+      - id: nps_statistic_sub_title_{{ id }}
+        type: Html
+        layout:
+          flex: 0 1 auto
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                {% raw %}
+                <font style='color: {{ color }}; font-size:{{ font_size }}px' >
+                  {{ movement | abs | round(1) }}
+                </font>
+                <font style='color: {{ color }}; font-size:{{ font_size - 4 }}px' >
+                  from previous period
+                </font>
+                {% endraw %}
+              on:
+                font_size:
+                  _var:
+                    name: subtitle_font_size
+                    default: 16
+                movement:
+                  _get:
+                    key: '0.nps_difference'
+                    from:
+                      _request: nps_statistic_aggregation_{{ id }}
+                color:
+                  _mql_expr:
+                    expr:
+                      $switch:
+                        branches:
+                          - case:
+                              $gt:
+                                - $nps_difference
+                                - 0
+                            then: '#1b5e20'
+                          - case:
+                              $lt:
+                                - $nps_difference
+                                - 0
+                            then: '#b71c1c'
+                        default: '#212121'
+                    on:
+                      _get:
+                        key: '0'
+                        from:
+                          _request: nps_statistic_aggregation_{{ id }}

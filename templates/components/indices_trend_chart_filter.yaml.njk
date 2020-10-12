@@ -1,0 +1,323 @@
+## -----------------
+## 
+## indices_trend_chart_filter.yaml
+## Calculate indices and render trend timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   span: _integer_ - Span of the component. Default 24.
+##   index_name: _string_ - the index fields used to calculate the monthly average on.
+##   index_field: _string_ - a list of the index fields used to calculate the monthly average on.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: end
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: indices_trend_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            cati_project:
+              $in:
+                _state: cati_projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month: 
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - 12
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+        - $group:
+            _id: $Mnt
+{% for subindex in subindices %}
+            {{ subindex.name }}:
+              $avg: ${{ subindex.field }}
+{% endfor %}
+{% for index in indices %}
+            {{ index.name }}:
+              $avg: ${{ index.field }}
+{% endfor %}
+        - $project:
+            A:
+{% for index in indices %}
+              - name: {{ index.name }}
+                score: ${{ index.name }}
+{% for subindex in subindices %}
+{% if index.subindex == subindex.name %}
+                subindex: {{ subindex.name }}
+                subindex_score:
+                  $divide:
+                    - ${{ subindex.name }}
+                    - 10
+{% endif %}
+{% endfor %}
+{% endfor %}
+            B:
+{% for subindex in subindices %}
+              - month: $_id
+                subindex: {{ subindex.name }}
+                subindex_score:
+                  $divide:
+                    - ${{ subindex.name }}
+                    - 10
+{% for index in indices %}
+{% if index.subindex == subindex.name %}
+                {{ index.name }}: ${{ index.name }}
+{% endif %}
+{% endfor %}
+                A:
+{% for index in indices %}
+{% if index.subindex == subindex.name %}
+                  - name: {{ index.name }}
+                    score: ${{ index.name }}
+{% endif %}
+{% endfor %}
+{% endfor %}
+        - $unwind:
+            path: $B
+        - $replaceRoot:
+            newRoot: $B
+        - $addFields:
+            all:
+              $reduce:
+                input: 
+                  $concatArrays:
+                    - - name: $subindex
+                        score: $subindex_score
+                    - $A
+                initialValue: ""
+                in:
+                  $cond:
+                    - $eq:
+                        - $$value
+                        - ""
+                    - $concat:
+                        - $$this.name
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.score
+                              - 1
+                        - "[/]"
+                    - $concat:
+                        - $$value
+                        - "\n"
+                        - $$this.name
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.score
+                              - 1
+                        - "[/]"
+        - $sort:
+            month: -1
+blocks:
+  - id: subindex_selector
+    type: Selector
+    layout:
+      size: 200
+    defaultValue:
+      _get:
+        key: '1.name'
+        from:
+          _var: subindices
+    properties:
+      title: Subindex
+      label:
+        inline: true
+      size: small
+      allowClear: false
+      options:
+        _mql_aggregate:
+          on:
+            _var: subindices
+          pipeline:
+            - $match:
+                field:
+                  $ne: csi
+            - $project:
+                value: $name
+                label: $name
+  - id: {{ id }}_chart
+    type: AmCharts4XY
+    properties:
+      height: 
+        _var: height
+      paddingRight: 0
+      # paddingBottom: 0
+      paddingLeft: 0
+      marginLeft: 20
+      marginRight: 20
+      numberFormatter:
+        numberFormat: "#.#"
+      colors:
+        list:
+          _var: colors
+      data:
+        _mql_aggregate:
+          on:
+            _request: indices_trend_aggregation_{{ id }}
+          pipeline:
+            - $match:
+                subindex:
+                  _state: subindex_selector
+      legend:
+        type: Legend
+        position: bottom
+        contentAlign: right
+        fontSize: 12
+        # maxWidth: 100
+        itemContainers: 
+          # width: 40
+          # paddingTop: 0
+          paddingBottom: 0
+          paddingLeft: -15
+          paddingRight: 0
+      dateFormatter: 
+        dateFormat: MMM yyyy
+      xAxes:
+        - type: DateAxis
+          id: category
+          baseInterval:
+            timeUnit: month
+            count: 1
+          dataFields:
+            category: month
+          title:
+            disabled: true
+          renderer:
+            grid:
+              disabled: true
+            labels:
+              disabled: true
+      yAxes:
+        - type: ValueAxis
+          # min: 0
+          extraMin: 0.1
+          max:
+            _var: max_y
+          cursorTooltipEnabled: false
+          title:
+            disabled: true
+          renderer:
+            opposite: true
+          #   grid:
+          #     disabled: true
+          #   labels:
+          #     disabled: true
+      cursor:
+        type: XYCursor
+        xAxis: category
+        fullWidthLineX: true
+        lineX:
+          fill: #607d8b
+          fillOpacity: 0.1
+        lineY:
+          disabled: true
+
+      series:
+        _mql_expr:
+          $concatArrays:
+            - _mql_aggregate:
+                on:
+                    _request: indices_trend_aggregation_{{ id }}
+                pipeline:
+                    - $match:
+                        subindex:
+                          _state: subindex_selector
+                    - $project:
+                        obj:
+                          $objectToArray: $$ROOT
+                    - $unwind:
+                        path: $obj
+                    - $group:
+                        _id: $obj.k
+                        month: 
+                          $first:
+                            $obj.k
+                        sum:
+                          $sum: $obj.v
+                        all:
+                          $first: $all
+                    - $match:
+                        sum:
+                          $ne: 0
+                    - $match:
+                        _id:
+                          $ne: month
+                    - $match:
+                        _id:
+                          $ne: subindex
+                    - $match:
+                        _id:
+                          $ne: subindex_score
+                    # - $sort:
+                    #     _id: 1
+                    - $project:
+                        _id: 0
+                        type: LineSeries
+                        name: $_id
+                        connect: false
+                        strokeWidth: 
+                          $literal: 2
+                        tensionX: 
+                          $literal: 0.9
+                        tensionY: 
+                          $literal: 0.9
+                        legendSettings:
+                          itemValueText: '{valueY}'
+                        dataFields:
+                          valueY: $_id
+                          dateX: month
+                          all: $all
+            - - type: LineSeries
+                name:
+                  _state: subindex_selector
+                # name: CSE
+                connect: false
+                # fillOpacity: 0.5
+                strokeWidth: 6
+                tensionX: 0.9
+                tensionY: 0.9
+                legendSettings:
+                  itemValueText: '{valueY}'
+                dataFields:
+                  valueY: subindex_score
+                  dateX: month
+                  all: all
+                bullets:
+                  - type: CircleBullet
+                    tooltipText: "{all}"
+                    strokeWidth: 8
+                    scale: 0.5
+                    circle: 
+                      radius: 0
+                    dateFormatter: 
+                      dateFormat: MMM yyyy
+                    states:
+                      hover:
+                        properties:
+                          scale: 1.2

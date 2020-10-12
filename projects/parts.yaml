@@ -1,0 +1,123 @@
+_ref:
+  path: templates/dashboard.yaml.njk
+  vars:
+    page_id: parts
+    dashboard_name: Parts
+    connectionId: cx_combined_collection
+    cati_projects:
+      - BWE_PARTS_CATI
+    subindices:
+      - name: CSI
+        field: csi
+      - name: Agent
+        field: agent_index
+      - name: Dealer
+        field: dealer_index
+      - name: Experience
+        field: experience_index
+    elements:
+      - name: Time to Order
+        field: Q1
+        subindex: Agent
+      - name: Communication
+        field: Q2
+        subindex: Agent
+      - name: Tech Info
+        field: Q3
+        subindex: Agent
+      - name: Quotation Accuracy
+        field: Q4
+        subindex: Agent
+      - name: Follow Up
+        field: Q5
+        subindex: Agent
+      - name: Parts Availability
+        field: Q6
+        subindex: Dealer
+      - name: Order Completion Time
+        field: Q7
+        subindex: Dealer
+      - name: Ease of Business
+        field: Q16
+        subindex: Experience
+      - name: Recommendation
+        field: Q17
+        subindex: Experience
+      - name: Repurchase likelihood
+        field: Q18
+        subindex: Experience
+      - name: Overall experience
+        field: Q19
+        subindex: Experience
+    questionnaire: |
+      Based on your experience with The Company's parts department, how would you rate from 0 (very poor) to 10 (excellent), the following aspects of their service delivery:
+
+      #### Agent Index (with regards to the Parts person)
+      Q1 The time it took to place the order _(Time to order)_<br/>
+      Q2 The Parts person's communication with you _(Communication)_<br/>
+      Q3 Technical information provided by the Parts person during the purchase _(Technical info)_<br/>
+      Q4 The accuracy of your quotation _(Quotation accuracy)_<br/>
+      Q5 The Parts person getting back to you as promised _(Follow up)_
+
+      #### Dealer Index (with regards to the dealer)
+      Q6 Part availability _(Parts availability)_<br/>
+      Q7 Your parts order being filled timeously _(Order completion time)_
+
+      #### Experience Index (with regards to your overall experience)
+      Q16 The overall ease of completing the transaction _(Ease of Business)_<br/>
+      Q17 Recommending the dealer to another person for parts _(Recommendation)_<br/>
+      Q18 Based on the experience, your likelihood to purchase parts from this dealer again _(Repurchase likelihood)_<br/>
+      Q19 Your overall purchase experience _(Overall experience)_<br/>
+
+      Q20 Is there anything the company can do to improve on their customer service?<br/>
+
+      C21. In future, how would you like The Company to contact you regarding customer service?
+        - Telephonically
+        - Email
+        - SMS
+        - Other
+    csi_description: |
+      A measurement of the level to which products and/ or services supplied by the company meet customer’s expectations
+
+      #### Calculation
+        - Average of all questions that relate to service touch points, based on a rating scale
+        - Touch points: Unique topics (Indexes) in survey that has relevance to your department (Survey unique to each department)
+        - Rating scale: A score from 0 - 10 (0= poor, 10= excellent)
+    nps_description: |
+      <p>NLS is used to measure the net loyalty of customers after an interaction with the company. It ignores customers who were neither 'very happy / unhappy', to establish what percentage of customers are now more loyal to the brand (Promoters) vs those who are now less loyal (Detractors / At Risk).</p>
+      
+      <p>Calculated from the loyalty questions (Q17, Q18, Q19):<br/>
+      <strong style="color: #006100;">Loyal</strong> (Promoters): Number who scored 9+ on <strong>all</strong> loyalty questions,<br/>
+      <strong>minus</strong><br/>
+      <strong style="color: #a10000;">At Risk</strong> (Detractors): Number who scored less than 6 for <strong>any</strong> of the loyalty questions
+      as percentage of sample who answered loyalty questions.</p>
+      <strong>Example: </strong><br/>
+      <strong style="color: #006100;">25 Loyal</strong> customers <em>minus</em> <strong style="color: #a10000;">10 At Risk</strong><span style="color: #a10000;"> </span>customers of <strong>50 Sample</strong><br/>
+      = 15 / 50<br/>
+      = 30% NLS
+# <p>Based on your experience with Congo Equipment Parts, how would you rate from 0 (very poor) to 10 (excellent), the following aspects of their service delivery:</p>
+
+# <p><strong>With regards to the Parts person...</strong><br/>
+# Q1 The time it took to place the order <em>(Time to order)</em><br/>
+# Q2 The Parts person's communication with you <em>(Communication)</em><br/>
+# Q3 Technical information provided by the Parts person during the purchase <em>(Technical info)</em><br/>
+# Q4 The accuracy of your quotation (<em>Quotation accuracy)</em><br/>
+# Q5 The Parts person getting back to you as promised (<em>Follow up)</em></p>
+
+# <p><strong>With regards to the dealer ...</strong><br/>
+# Q6 Parts availability <em>(Parts availability)</em><br/>
+# Q7 Your parts order being filled timeously <em>(Order completion time)</em></p>
+
+# <p><strong>With regards to your overall experience ...</strong><br/>
+# Q16 The overall ease of completing the transaction <em>(Ease of Business) </em><br/>
+# Q17 Recommending the dealer to another person for parts <em>(Recommendation)</em><br/>
+# Q18 Based on the experience, your likelihood to purchase parts from this dealer again <em>(Repurchase likelihood)</em><br/>
+# Q19 Your overall purchase experience <em>(Overall experience)</em><br/>
+# Q20 Is there anything Congo Equipment can do to improve on their customer service?</p>
+
+# <p>C21. In future, how would you like Congo Equipment to contact you regarding customer service?<br/>
+# -&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Telephonically<br/>
+# -&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Email<br/>
+# -&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SMS<br/>
+# -&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Other</p>
+

@@ -1,0 +1,17 @@
+global:
+  _ref: global.yaml
+
+menus:
+  - _ref: menu.yaml
+
+connections:
+  - id: cx_combined_collection
+    type: MongoDBCollection
+    properties:
+      databaseName: example-cx
+      collection: cx-collection
+      databaseUri:
+        _secret: lowdefy_examples_mdb
+
+pages:
+  - _ref: projects/parts.yaml
