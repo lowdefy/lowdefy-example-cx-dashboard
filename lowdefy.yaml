@@ -14,4 +14,4 @@ connections:
         _secret: lowdefy_examples_mdb
 
 pages:
-  - _ref: projects/sales.yaml
+  - _ref: projects/dashboard.yaml

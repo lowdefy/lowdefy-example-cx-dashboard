@@ -1,7 +1,7 @@
 id: default
 links:
-  - id: sales
+  - id: dashboard
     type: MenuLink
-    pageId: sales
+    pageId: dashboard
     properties:
-      title: Sales
+      title: Dashboard
