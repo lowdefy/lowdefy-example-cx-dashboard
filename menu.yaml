@@ -1,7 +1,7 @@
 id: default
 links:
-  - id: parts
+  - id: sales
     type: MenuLink
-    pageId: parts
+    pageId: sales
     properties:
-      title: Parts
+      title: Sales

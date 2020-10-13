@@ -22,9 +22,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            cati_project:
+            project:
               $in:
-                _state: cati_projects
+                _state: projects
         - $group:
             _id: $Mnt
             month: 
@@ -93,20 +93,20 @@ requests:
             #                             - 10
             #                       - 10
             #               - false
-            opacity:
-              $cond:
-                - $or:
-                    - $eq:
-                      - $all.root.index
-                      - $max
-                    - $eq:
-                        - $all.root.index
-                        - $min
-                    - $eq:
-                        - $all.root.month
-                        - $max_month
-                - 1
-                - 0
+            # opacity:
+            #   $cond:
+            #     - $or:
+            #         - $eq:
+            #           - $all.root.index
+            #           - $max
+            #         - $eq:
+            #             - $all.root.index
+            #             - $min
+            #         - $eq:
+            #             - $all.root.month
+            #             - $max_month
+            #     - 1
+            #     - 0
         - $sort:
             month: -1
 

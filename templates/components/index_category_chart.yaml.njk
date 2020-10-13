@@ -13,6 +13,11 @@
 
 id: index_category_chart_{{ id }}
 type: AmCharts4XY
+layout:
+  span:
+    _var:
+      name: span
+      default: 24
 requests:
   - id: index_category_aggregation_{{ id }}
     type: MongoDBAggregation
@@ -22,9 +27,9 @@ requests:
         - $match:
             $and:
               - published: true
-              - cati_project:
+              - project:
                   $in:
-                    _state: cati_projects
+                    _state: projects
               - Mnt:
                   $gte:
                     _state: start_month

@@ -23,9 +23,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            cati_project:
+            project:
               $in:
-                _state: cati_projects
+                _state: projects
         - $match:
             $expr:
               $gte:
@@ -172,7 +172,7 @@ blocks:
             | {{ index_title }} | Diff (%) | {{ current_month | date('MMM YYYY') }}|  3 Month | 6 Month | FYtD |
             |-------|:-----:|:-----:|:-----:|:-----:|:-----:|
             {% for index in data -%}
-            | {{ index.name }} | {% if index.change < -3 %} <div style='color: #cf1322; font-size: 12px;' > <b>{{ index.change | round(1) }} </b></div> {% elif index.change > 3 %} <div style='color: #237804; font-size: 12px;' ><b> +{{ index.change | round(1) }} </b></div> {% else %} <div style='font-size: 12px;' >{{ index.change | round(1) }}</div> {% endif %} |{% for score in [index.current, index.3month, index.6month, index.fytd] %}{% if score < 7.5 %} <div style='color: #cf1322;' ><b> {{ score | round(1) }} </b></div> {% elif score >= 9 %} <div style='color: #237804;' ><b> {{ score | round(1) }} </b></div> {% else %} {{ score | round(1) }} {% endif %} |{% endfor %}
+            | {{ index.name }} | {% if index.change < 0 %} <div style='color: #cf1322; font-size: 12px;' > <b>{{ index.change | round(1) }} </b></div> {% elif index.change > 0 %} <div style='color: #237804; font-size: 12px;' ><b> +{{ index.change | round(1) }} </b></div> {% else %} <div style='font-size: 12px;' >{{ index.change | round(1) }}</div> {% endif %} |{% for score in [index.current, index.3month, index.6month, index.fytd] %}{% if score < 7.5 %} <div style='color: #cf1322;' ><b> {{ score | round(1) }} </b></div> {% elif score >= 9 %} <div style='color: #237804;' ><b> {{ score | round(1) }} </b></div> {% else %} {{ score | round(1) }} {% endif %} |{% endfor %}
             {% endfor -%}
             {% endraw %}
           on:

@@ -19,9 +19,9 @@ requests:
         - $match:
             $and:
               - published: true
-              - cati_project:
+              - project:
                   $in:
-                    _state: cati_projects
+                    _state: projects
               - Mnt:
                   _state: end_month
         - $group:

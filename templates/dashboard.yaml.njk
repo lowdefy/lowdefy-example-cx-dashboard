@@ -1,9 +1,12 @@
 id: {{ page_id }}
-type: PageSiderMenu
+type: PageHeaderMenu
 properties:
   title: {{ dashboard_name }}
+  menu:
+    links: []
 layout:
   contentGutter: 8
+public: true
 requests:
   - id: init
     type: MongoDBAggregation
@@ -12,9 +15,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            cati_project:
+            project:
               $in:
-                _state: cati_projects
+                _state: projects
         - $group:
             _id: $Mnt
             financial_year:
@@ -96,9 +99,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            cati_project:
+            project:
               $in:
-                _state: cati_projects
+                _state: projects
             Mnt:
               $lte:
                 _state: filter_selected_month
@@ -144,11 +147,11 @@ requests:
                 - 5
 actions:
   onInit:
-    - id: set_cati_projects
+    - id: set_projects
       type: SetState
       params:
-        cati_projects:
-          _var: cati_projects
+        projects:
+          _var: projects
     - id: fetch_init
       type: Fetch
       params: init
@@ -266,7 +269,7 @@ blocks:
               content: |
                 <p>NPS is used to measure the net loyalty of customers after an interaction with the company. It ignores customers who were neither 'very happy / unhappy', to establish what percentage of customers are now more loyal to the brand (Promoters) vs those who are now less loyal (Detractors / At Risk).</p>
                 
-                <p>Calculated from the loyalty questions (Q17, Q18, Q19):<br/>
+                <p>Calculated from the loyalty questions (Q12, Q13, Q14):<br/>
                 <strong style="color: #006100;">Loyal</strong> (Promoters): Number who scored 9+ on <strong>all</strong> loyalty questions,<br/>
                 <strong>minus</strong><br/>
                 <strong style="color: #a10000;">At Risk</strong> (Detractors): Number who scored less than 6 for <strong>any</strong> of the loyalty questions
@@ -274,7 +277,7 @@ blocks:
                 <strong>Example: </strong><br/>
                 <strong style="color: #006100;">25 Loyal</strong> customers <em>minus</em> <strong style="color: #a10000;">10 At Risk</strong><span style="color: #a10000;"> </span>customers of <strong>50 Sample</strong><br/>
                 = 15 / 50<br/>
-                = 30% NLS
+                = 30% NPS
   - id: title_box
     type: Box
     blocks:
@@ -445,6 +448,16 @@ blocks:
                     id: nps_microchart
                     connectionId: {{ connectionId }}
                     height: 175
+          # - id: nps_description
+          #   type: Markdown
+          #   style:
+          #       '.markdown-body':
+          #         fontSize: 12px
+          #   properties:
+          #     content: |
+          #       The Net Promoter Score (NPS) is a customer experience metric that measures customer loyalty, and has been show to be a good predictor of future growth. It gives an indication of how many customers are recommending the product and likely to repurchase, how many have no strong feelings, and how many customers are likely to churn and recommending to others not to use the product.
+
+          #       It based on the question "How likely are you to recommend this company to a friend or colleague?", and is calculated by subtracting the percentage of respondents that score 6 or less, from the percentage that score 9 or above.
 
   - id: subindices_box
     type: Box
@@ -513,95 +526,154 @@ blocks:
       - id: nps_by_region_title
         type: Html
         properties:
-          html: '<h4>NPS by region</h4>'
+          html: '<h4>NPS and CSI by region over past 3 months</h4>'
       - id: nps_region_card
         type: Card
+        layout:
+          contentJustify: center
         properties:
           size: small
           inner: true
         blocks:
-          - _ref:
-              path: templates/components/category_chart_filter.yaml.njk
-              vars:
-                id: nps_by_region
-                category: regions
-                options:
-                  _mql_aggregate:
-                    on:
-                      _request: nps_category_aggregation_nps_by_region
-                    pipeline:
-                      - $project:
-                          value: $_id
-                          label: $_id
-                      - $sort:
-                          label: 1
-                chart_block:
-                  _ref:
-                    path: templates/components/nps_category_chart.yaml.njk
-                    vars:
-                      id: nps_by_region
-                      connectionId: {{ connectionId }}
-                      category: region
-                      chart_data:
-                        _mql_aggregate:
-                          on:
-                            _request: nps_category_aggregation_nps_by_region
-                          pipeline:
-                            - $match:
-                                _id:
-                                  $in:
-                                    _state: selected_regions
+          - id: nps_category_selector
+            type: CheckboxSelector
+            field: selected_regions
+            layout:
+              size: auto
+            properties:
+              label:
+                disabled: true
+              options:
+                _mql_aggregate:
+                  on:
+                    _request: nps_category_aggregation_nps_by_region
+                  pipeline:
+                    - $project:
+                        value: $_id
+                        label: $_id
+                    - $sort:
+                        label: 1
+          - id: box1
+            type: Box
+            blocks:
+              - _ref:
+                  path: templates/components/nps_category_chart.yaml.njk
+                  vars:
+                    id: nps_by_region
+                    connectionId: {{ connectionId }}
+                    span: 12
+                    category: region
+                    chart_data:
+                      _mql_aggregate:
+                        on:
+                          _request: nps_category_aggregation_nps_by_region
+                        pipeline:
+                          - $match:
+                              _id:
+                                $in:
+                                  _state: selected_regions
+              - _ref:
+                  path: templates/components/index_category_chart.yaml.njk
+                  vars:
+                    id: csi_by_region
+                    connectionId: {{ connectionId }}
+                    span: 12
+                    category: region
+                    index_field: csi
+                    index_name: CSI
+                    color:
+                      _global: colors.csi
+                    chart_data:
+                      _mql_aggregate:
+                        on:
+                          _request: index_category_aggregation_csi_by_region
+                        pipeline:
+                          - $match:
+                              _id:
+                                $in:
+                                  _state: selected_regions
+          # - _ref:
+          #     path: templates/components/category_chart_filter.yaml.njk
+          #     vars:
+          #       id: nps_by_region
+          #       category: regions
+          #       options:
+          #         _mql_aggregate:
+          #           on:
+          #             _request: nps_category_aggregation_nps_by_region
+          #           pipeline:
+          #             - $project:
+          #                 value: $_id
+          #                 label: $_id
+          #             - $sort:
+          #                 label: 1
+          #       chart_block:
+          #         _ref:
+          #           path: templates/components/nps_category_chart.yaml.njk
+          #           vars:
+          #             id: nps_by_region
+          #             connectionId: {{ connectionId }}
+          #             category: region
+          #             chart_data:
+          #               _mql_aggregate:
+          #                 on:
+          #                   _request: nps_category_aggregation_nps_by_region
+          #                 pipeline:
+          #                   - $match:
+          #                       _id:
+          #                         $in:
+          #                           _state: selected_regions
 
-  - id: csi_by_region_box
-    type: Box
-    layout:
-      span: 24
-    blocks:
-      - id: csi_by_region_title
-        type: Html
-        properties:
-          html: '<h4>CSI by region</h4>'
-      - id: csi_region_card
-        type: Card
-        properties:
-          size: small
-          inner: true
-        blocks:
-          - _ref:
-              path: templates/components/category_chart_filter.yaml.njk
-              vars:
-                id: csi_by_region
-                category: regions
-                options:
-                  _mql_aggregate:
-                    on:
-                      _request: index_category_aggregation_csi_by_region
-                    pipeline:
-                      - $project:
-                          value: $_id
-                          label: $_id
-                      - $sort:
-                          label: 1
-                chart_block:
-                  _ref:
-                    path: templates/components/index_category_chart.yaml.njk
-                    vars:
-                      id: csi_by_region
-                      connectionId: {{ connectionId }}
-                      category: region
-                      index_field: csi
-                      index_name: CSI
-                      color:
-                        _global: colors.csi
-                      chart_data:
-                        _mql_aggregate:
-                          on:
-                            _request: index_category_aggregation_csi_by_region
-                          pipeline:
-                            - $match:
-                                _id:
-                                  $in:
-                                    _state: selected_regions
+  # - id: csi_by_region_box
+  #   type: Box
+  #   layout:
+  #     span: 24
+  #   blocks:
+  #     - id: csi_by_region_title
+  #       type: Html
+  #       properties:
+  #         html: '<h4>CSI by region</h4>'
+  #     - id: csi_region_card
+  #       type: Card
+  #       properties:
+  #         size: small
+  #         inner: true
+  #       blocks:
+  #         - _ref:
+  #             path: templates/components/category_chart_filter.yaml.njk
+  #             vars:
+  #               id: csi_by_region
+  #               category: regions
+  #               options:
+  #                 _mql_aggregate:
+  #                   on:
+  #                     _request: index_category_aggregation_csi_by_region
+  #                   pipeline:
+  #                     - $project:
+  #                         value: $_id
+  #                         label: $_id
+  #                     - $sort:
+  #                         label: 1
+  #               chart_block:
+  #                 _ref:
+  #                   path: templates/components/index_category_chart.yaml.njk
+  #                   vars:
+  #                     id: csi_by_region
+  #                     connectionId: {{ connectionId }}
+  #                     category: region
+  #                     index_field: csi
+  #                     index_name: CSI
+  #                     color:
+  #                       _global: colors.csi
+  #                     chart_data:
+  #                       _mql_aggregate:
+  #                         on:
+  #                           _request: index_category_aggregation_csi_by_region
+  #                         pipeline:
+  #                           - $match:
+  #                               _id:
+  #                                 $in:
+  #                                   _state: selected_regions
 
   - id: elements_by_region_box
     type: Box

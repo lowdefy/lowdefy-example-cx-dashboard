@@ -31,9 +31,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            cati_project:
+            project:
               $in: 
-                _state: cati_projects
+                _state: projects
         - $match:
             $expr:
               $and:

@@ -20,9 +20,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            cati_project:
+            project:
               $in:
-                _state: cati_projects
+                _state: projects
         - $group:
             _id: $Mnt
             index:
