@@ -5,7 +5,7 @@ global:
 #   - _ref: menu.yaml
 
 connections:
-  - id: cx_combined_collection
+  - id: cx_collection
     type: MongoDBCollection
     properties:
       databaseName: example-cx
@@ -14,4 +14,5 @@ connections:
         _secret: lowdefy_examples_mdb
 
 pages:
-  - _ref: projects/dashboard.yaml
+  - _ref: projects/dashboard-main.yaml
+  - _ref: projects/dashboard-data.yaml

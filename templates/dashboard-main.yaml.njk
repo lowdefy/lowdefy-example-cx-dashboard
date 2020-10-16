@@ -1,12 +1,12 @@
 id: {{ page_id }}
 type: PageHeaderMenu
+public: true
 properties:
   title: {{ dashboard_name }}
   menu:
     links: []
 layout:
   contentGutter: 8
-public: true
 requests:
   - id: init
     type: MongoDBAggregation
@@ -300,6 +300,24 @@ blocks:
         properties:
           offsetTop: 16
         blocks:
+          - id: data_button
+            type: Button
+            layout:
+              grow: 0
+              shrink: 1
+              size: auto
+            properties:
+              title: Data
+              icon: TableOutlined
+              hideActionLoading: true
+              shape: round
+              type: default
+            actions:
+              onClick:
+                - id: link_data
+                  type: Link
+                  params:
+                    pageId: {{ page_id }}-data
           - id: survey_button
             type: Button
             layout:
@@ -459,32 +477,32 @@ blocks:
 
           #       It based on the question "How likely are you to recommend this company to a friend or colleague?", and is calculated by subtracting the percentage of respondents that score 6 or less, from the percentage that score 9 or above.
 
-  - id: subindices_box
-    type: Box
-    layout:
-      span: 24
-    blocks:
-      - id: subindices_title
-        type: Html
-        properties:
-          html: '<h4>Subindices</h4>'
-      - id: subindices_card
-        type: Card
-        properties:
-          size: small
-          inner: true
-        blocks:
-          - _ref:
-              path: templates/components/indices_trend_chart.yaml.njk
-              vars:
-                id: {{ page_id }}subindices
-                connectionId: {{ connectionId }}
-                height: 410
-                max_y: 100
-                indices:
-                  _var: subindices
-                colors:
-                  _global: colors.subindices
+  # - id: subindices_box
+  #   type: Box
+  #   layout:
+  #     span: 24
+  #   blocks:
+  #     - id: subindices_title
+  #       type: Html
+  #       properties:
+  #         html: '<h4>Subindices</h4>'
+  #     - id: subindices_card
+  #       type: Card
+  #       properties:
+  #         size: small
+  #         inner: true
+  #       blocks:
+  #         - _ref:
+  #             path: templates/components/indices_trend_chart.yaml.njk
+  #             vars:
+  #               id: {{ page_id }}subindices
+  #               connectionId: {{ connectionId }}
+  #               height: 410
+  #               max_y: 100
+  #               indices:
+  #                 _var: subindices
+  #               colors:
+  #                 _global: colors.subindices
 
   - id: elements_box
     type: Box

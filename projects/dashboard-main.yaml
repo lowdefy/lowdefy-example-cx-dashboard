@@ -1,9 +1,9 @@
 _ref:
-  path: templates/dashboard.yaml.njk
+  path: templates/dashboard-main.yaml.njk
   vars:
     page_id: dashboard
     dashboard_name: Dashboard
-    connectionId: cx_combined_collection
+    connectionId: cx_collection
     projects:
       - Parts
     subindices:

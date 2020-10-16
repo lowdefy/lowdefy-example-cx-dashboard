@@ -1,0 +1,499 @@
+id: {{ page_id }}-data
+type: PageHeaderMenu
+public: true
+properties:
+  title: {{ dashboard_name }}
+  menu:
+    links: []
+actions:
+  onInit:
+    - id: set_cati_projects
+      type: SetState
+      params:
+        month_from:
+          _date: 2020-06-01
+        month_to:
+          _date: 2020-09-01
+        pagination:
+          pageSize: 10
+          skip: 0
+        interviews:
+          - _id: 0
+            Mnt:
+              _date: 2020-09-01
+            respondent: Jack Jon
+            tel: 09876534567
+            company: Company Ltd
+            transaction_date:
+              _date: 2020-08-11
+            transaction_number: HG89833-9898
+            po_number: DF90F-SDF9
+            agent: Agent X
+            branch: Scranton
+            promoter: Promoter
+            promoter_color: '#43a047'
+            csi: 83
+            elements_verbatim: []
+            elements:
+              - name: Time to Order
+                score: 9
+                verbatim: null
+              - name: Communication
+                score: 9
+                verbatim: null
+              - name: Tech Info
+                score: 8
+                verbatim: null
+          - _id: 1
+            Mnt:
+              _date: 2020-09-01
+            respondent: Abe Petersson
+            branch: Scranton
+            promoter: Indifferent
+            promoter_color: '#546e7a'
+            csi: 75
+            elements_verbatim:
+              - name: Communication
+                score: 6
+                verbatim: Communication was not good. I expected much better.
+            elements:
+              - name: Time to Order
+                score: 9
+                verbatim: null
+              - name: Communication
+                score: 6
+                verbatim: Communication was not good. I expected much better.
+              - name: Tech Info
+                score: 7
+                verbatim: null
+          - _id: 2
+            Mnt:
+              _date: 2020-09-01
+            respondent: Chom Borderrss
+            branch: Stamford
+            promoter: Detractor
+            promoter_color: '#fb8c00'
+            csi: 62
+            elements_verbatim:
+              - name: Time to Order
+                score: 6
+                verbatim: The order to ages to process
+              - name: Tech Info
+                score: 5
+                verbatim: Techie was useless
+            elements:
+              - name: Time to Order
+                score: 6
+                verbatim: The order to ages to process
+              - name: Communication
+                score: 7
+                verbatim: null
+              - name: Tech Info
+                score: 5
+                verbatim: Techie was useless
+    # - id: fetch_init
+    #   type: Fetch
+    #   params: init
+    # - id: set_init
+    #   type: SetState
+    #   params:
+    #     _get:
+    #       key: '0'
+    #       from:
+    #         _request: init
+blocks:
+  - id: interview_details_modal
+    type: Modal
+    properties:
+      title: Interview Details
+      footer: false
+      width: 1000px
+    blocks:
+      - id: details_text
+        type: Markdown
+        properties:
+          renderHtml: true
+          content:
+            _nunjucks:
+              template: |
+                {% raw %}
+                #### Respondent Details
+                <b>Name:</b> {{ respondent }} <br/>
+                <b>Contact:</b> {{ phone }} <br/>
+                <b>Company:</b> {{ company }} <br/>
+                <b>Date:</b> {{ interaction_date | date("YYYY-MM-DD") }} <br/>
+                <b>Transaction Number:</b> {{ transaction_number }} <br/>
+                <b>Serial Number:</b> {{ serial_number }} <br/>
+                <b>Agent:</b> {{ agent }} <br/>
+                <b>Branch:</b> {{ branch }}
+
+                #### Interview Details
+                | Element | Score | Comment |
+                |---------|-------|---------|
+                {% for item in elements -%}
+                | {{ item.name }} | {% if item.score < 7 %} <div style='color: #cf1322;' ><b> {{ item.score }} </b></div> {% elif item.score >= 9 %} <div style='color: #237804;' ><b> {{ item.score }} </b></div> {% else %} {{ item.score }} {% endif %}  | {{ item.verbatim }} |
+                {% endfor -%}
+                {% endraw %}
+              on:
+                _state: selected
+  - id: interviews_title
+    type: Markdown
+    properties:
+      content: "###### Interviews"
+  - id: search_box
+    type: Box
+    layout:
+      flex: 1 1 auto
+    blocks:
+      - id: search_input
+        type: TextInput
+        layout:
+          flex: 1 1 auto
+        properties:
+          placeholder: Search
+          label:
+            disabled: true
+        # actions:
+        #   onPressEnter:
+        #     - id: reset_selected
+        #       type: SetState
+        #       params:
+        #         selected: {}
+        #     - id: fetch
+        #       type: Fetch
+        #       params:
+        #         - fetch_interviewss
+        #     - id: set_fetched_interviewss
+        #       type: SetState
+        #       params:
+        #         interviews:
+        #           _request: fetch_interviewss
+      - id: search_button
+        type: Button
+        layout:
+          flex: 1 1 auto
+        properties:
+          title: Search
+          hideTitle: true
+          icon: SearchOutlined
+          type: default
+        # actions:
+        #   onClick:
+        #     - id: reset_selected
+        #       type: SetState
+        #       params:
+        #         selected: {}
+        #     - id: fetch
+        #       type: Fetch
+        #       params:
+        #         - fetch_interviewss
+        #     - id: set_fetched_interviewss
+        #       type: SetState
+        #       params:
+        #         interviews:
+        #           _request: fetch_interviewss
+  - id: search_tags_box
+    type: Box
+    layout:
+      flex: 1 1 auto
+      contentGutter: 8
+    blocks:
+      - id: agent_selector
+        type: Selector
+        layout:
+          flex: 1 1 auto
+        properties:
+          label:
+            disabled: true
+          placeholder: Agent
+          options:
+            - Agent X
+            - James Bond
+      - id: branch_selector
+        type: Selector
+        layout:
+          flex: 1 1 auto
+        properties:
+          label:
+            disabled: true
+          placeholder: Branch
+          options:
+            - Scranton
+            - Stamford
+      - id: region_selector
+        type: Selector
+        layout:
+          flex: 1 1 auto
+        properties:
+          label:
+            disabled: true
+          placeholder: Region
+          options:
+            - Near
+            - Far
+            - Wherever
+            - You Are
+      - id: month_from
+        type: MonthSelector
+        layout:
+          flex: 1 1 auto
+        properties:
+          label:
+            disabled: true
+          placeholder: Month From
+      - id: month_to
+        type: MonthSelector
+        layout:
+          flex: 1 1 auto
+        properties:
+          label:
+            disabled: true
+          placeholder: Month To
+  - id: element_selector
+    type: CheckboxSelector
+    properties:
+      label:
+        disabled: true
+      placeholder: Select Elements
+      options:
+        - Time to Order
+        - Communication
+        - Tech Info
+        - Follow Up
+        - Quotation Accuracy
+        - Parts Availability
+        - Order Completion Time
+        - Ease of Business
+        # - Recommendation
+        # - Repurchase Likelihood
+        # - Overall Experience
+        # - Additional Info
+  - id: interviews_card
+    type: Card
+    style:
+      marginTop: 4
+    blocks:
+      - id: interviews
+        type: List
+        blocks:
+          - id: interviews.$.box
+            type: Box
+            actions:
+              onClick:
+                - id: set_selected
+                  type: SetState
+                  params:
+                    selected:
+                      _state: interviews.$
+                - id: open_details_modal
+                  type: CallMethod
+                  params:
+                    blockId: interview_details_modal
+                    method: toggleOpen
+            #     - id: set_selected_id
+            #       type: SetState
+            #       params:
+            #         selected_id:
+            #           _state: interviews.$._id
+            #     - id: fetch_selected
+            #       type: Fetch
+            #       params:
+            #         - fetch_selected
+            #     - id: set_selected
+            #       type: SetState
+            #       params:
+            #         selected:
+            #           _get:
+            #             key: '0'
+            #             from:
+            #               _request: fetch_selected
+            blocks:
+              - id: interviews.$.header_box
+                type: Box
+                layout:
+                  contentAlign: middle
+                  contentGutter: 16
+                blocks:
+                  - id: interviews.$.respondent
+                    type: Html
+                    layout:
+                      span: 6
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            {% raw %}
+                            <font style='font-size:14px' >
+                              <b>{{ respondent }}</b>
+                            </font>
+                            {% endraw %}
+                          on:
+                            _state: interviews.$
+                  - id: interviews.$.branch
+                    type: Html
+                    layout:
+                      span: 6
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            {% raw %}
+                            <font style='font-size:14px' >
+                              <b>{{ branch }}</b>
+                            </font>
+                            {% endraw %}
+                          on:
+                            _state: interviews.$
+                  - id: interviews.$.promoter
+                    type: Html
+                    layout:
+                      span: 6
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            {% raw %}
+                            NLS Status: <font style='font-size:14px; color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
+                            {% endraw %}
+                          on:
+                            _state: interviews.$
+                  - id: csi_box
+                    type: Box
+                    layout:
+                      span: 6
+                      contentGutter: 8
+                    blocks:
+                      - id: csi_label
+                        type: Html
+                        layout:
+                          size: 40
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <font style='font-size:14px;' >CSE:</font>
+                                {% endraw %}
+                              on:
+                                _state: interviews.$
+                      - id: interviews.$.csi
+                        type: Progress
+                        layout:
+                          flex: 2 1 auto
+                        properties:
+                          showInfo: false
+                          status: normal
+                          percent:
+                            _state: interviews.$.csi
+                          strokeColor:
+                            _mql_expr:
+                              expr:
+                                $switch:
+                                  branches:
+                                    - case:
+                                        $gte:
+                                          - $csi
+                                          - 80
+                                      then: '#52c41a'
+                                    - case:
+                                        $lte:
+                                          - $csi
+                                          - 65
+                                      then: '#f5222d'
+                                  default: '#8c8c8c'
+                              on:
+                                _state: interviews.$
+                      - id: interviews.$.csi_score
+                        type: Html
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <font style='font-size:14px;' ><b>{{ csi }}</b></font>
+                                {% endraw %}
+                              on:
+                                _state: interviews.$
+              - id: interviews.$.elements_verbatim
+                type: List
+                layout:
+                  contentGutter: 8
+                blocks:
+                  - id: interviews.$.elements_verbatim.$.score
+                    type: Avatar
+                    layout:
+                      size: auto
+                    properties:
+                      size: small
+                      content:
+                        _state: interviews.$.elements_verbatim.$.score
+                      color:
+                        _mql_expr:
+                          expr:
+                            $switch:
+                              branches:
+                                - case:
+                                    $gte:
+                                      - $score
+                                      - 9
+                                  then: '#52c41a'
+                                - case:
+                                    $lte:
+                                      - $score
+                                      - 6
+                                  then: '#f5222d'
+                              default: '#8c8c8c'
+                          on:
+                            _state: interviews.$.elements_verbatim.$
+                  - id: interviews.$.elements_verbatim.$.name
+                    type: Html
+                    layout:
+                      size: auto
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            {% raw %}
+                            <font style='font-size:12px;' ><b>{{ name }}</b></font>
+                            {% endraw %}
+                          on:
+                            _state: interviews.$.elements_verbatim.$
+                  - id: interviews.$.elements_verbatim.$.verbatim
+                    type: Html
+                    layout:
+                      size: auto
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            {% raw %}
+                            <font style='font-size:12px;' >{{ verbatim }}</font>
+                            {% endraw %}
+                          on:
+                            _state: interviews.$.elements_verbatim.$
+              - id: interviews.$.divider
+                type: Divider
+                visible:
+                  _not:
+                    _eq:
+                      - _state: interviews.$._id
+                      - _mql_expr:
+                          $arrayElemAt:
+                            - $interviews._id
+                            - -1
+
+  - id: box_pagination
+    type: Box
+    layout:
+      contentJustify: end
+    blocks:
+      - id: pagination
+        type: Pagination
+        layout:
+          size: auto
+        properties:
+          # showSizeChanger: true
+          showTotal: true
+          total: 20
