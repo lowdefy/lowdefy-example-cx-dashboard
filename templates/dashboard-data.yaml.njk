@@ -77,14 +77,14 @@ actions:
             elements_verbatim:
               - name: Time to Order
                 score: 6
-                verbatim: The order to ages to process
+                verbatim: The order took ages to process
               - name: Tech Info
                 score: 5
                 verbatim: Techie was useless
             elements:
               - name: Time to Order
                 score: 6
-                verbatim: The order to ages to process
+                verbatim: The order took ages to process
               - name: Communication
                 score: 7
                 verbatim: null
@@ -353,7 +353,7 @@ blocks:
                         _nunjucks:
                           template: |
                             {% raw %}
-                            NLS Status: <font style='font-size:14px; color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
+                            NPS Status: <font style='font-size:14px; color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
                             {% endraw %}
                           on:
                             _state: interviews.$
@@ -372,7 +372,7 @@ blocks:
                             _nunjucks:
                               template: |
                                 {% raw %}
-                                <font style='font-size:14px;' >CSE:</font>
+                                <font style='font-size:14px;' >CSI:</font>
                                 {% endraw %}
                               on:
                                 _state: interviews.$
