@@ -10,6 +10,8 @@ _ref:
     filter_fields:
       - name: Region
         field: region
+      - name: Agent
+        field: agent
 
     elements:
       - name: Time to Order
@@ -53,7 +55,7 @@ _ref:
       _nunjucks:
         template: |
           <font style='font-size:14px' >
-            {{ respondent }} <b>|</b> {{ company }} <b>|</b> {{ region }}
+            {{ respondent }} <b>|</b> {{ company }} <b>|</b> {{ region }} <b>|</b> {{ agent }}
           </font>
         on:
           _state: interviews.$

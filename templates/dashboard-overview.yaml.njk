@@ -1,0 +1,563 @@
+id: {{ page_id }}
+type: PageHeaderMenu
+public: true
+properties:
+  title: {{ dashboard_name }}
+  header:
+    theme: light
+  logoSrc:
+    _global: company_logo
+layout:
+  contentGutter: 8
+requests:
+  - id: init
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $group:
+            _id: $Mnt
+            financial_year:
+              $first: $financial_year
+            regions:
+              $addToSet: 
+                $cond:
+                  - $eq:
+                      - $financial_year
+                      - $year:
+                          _date: now
+                  - $region
+                  - null
+        - $sort:
+            _id: -1
+        - $group:
+            _id: 0
+            max_financial_year:
+              $max: $financial_year
+            months:
+              $push:
+                value: $_id
+                label:
+                  $dateToString:
+                    date: $_id
+                    format: '%Y-%m'
+            regions:
+              $addToSet: $regions
+        - $project:
+            _id: 0
+        - $addFields:
+            end_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            max_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            start_month:
+              $arrayElemAt:
+                - $months.value
+                - 2
+            previous_period_end_month:
+              $arrayElemAt:
+                - $months.value
+                - 3
+            previous_period_start_month:
+              $arrayElemAt:
+                - $months.value
+                - 5
+            selected_regions:
+              $filter:
+                input:
+                  $reduce:
+                    input: $regions
+                    initialValue: []
+                    in:
+                      $setUnion:
+                        - $$value
+                        - $$this
+                cond:
+                  $ne:
+                    - $$this
+                    - null
+            regions:
+              $arrayElemAt:
+                - $filter:
+                    input:
+                      $reduce:
+                        input: $regions
+                        initialValue: []
+                        in:
+                          $setUnion:
+                            - $$value
+                            - $$this
+                    cond:
+                      $ne:
+                        - $$this
+                        - null
+                - 1
+  - id: update_filter
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+            Mnt:
+              $lte:
+                _state: filter_selected_month
+        - $group:
+            _id: $Mnt
+            financial_year:
+              $first: $financial_year
+        - $sort:
+            _id: -1
+        - $group:
+            _id: 0
+            max_financial_year:
+              $max: $financial_year
+            months:
+              $push:
+                value: $_id
+                label:
+                  $dateToString:
+                    date: $_id
+                    format: '%Y-%m'
+        - $project:
+            _id: 0
+        - $addFields:
+            end_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            max_month:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            start_month:
+              $arrayElemAt:
+                - $months.value
+                - 2
+            previous_period_end_month:
+              $arrayElemAt:
+                - $months.value
+                - 3
+            previous_period_start_month:
+              $arrayElemAt:
+                - $months.value
+                - 5
+
+actions:
+  onInit:
+    - id: set_projects
+      type: SetState
+      params:
+        projects:
+          _var: projects
+    - id: fetch_init
+      type: Fetch
+      params: init
+    - id: set_init
+      type: SetState
+      params:
+        _get:
+          key: '0'
+          from:
+            _request: init
+blocks:
+  - id: filter_drawer
+    type: Drawer
+    layout:
+      contentGutter: 8
+    properties:
+      width: 400px
+    blocks:
+      - id: filter_selected_month
+        type: Selector
+        style:
+          marginTop: 150px
+        properties:
+          title: Report Month
+          placeholder: Select month
+          options:
+            _get:
+              key: '0.months'
+              from:
+                _request: init
+      - id: filter_apply_button
+        type: Button
+        properties:
+          block: true
+          title: Apply
+        actions:
+          onClick:
+            - id: fetch_months
+              type: Fetch
+              params: update_filter
+            - id: set_months
+              type: SetState
+              params:
+                _get:
+                  key: '0'
+                  from:
+                    _request: update_filter
+            - id: fetch_all
+              type: Fetch
+            - id: close_filter_drawer
+              type: CallMethod
+              params:
+                blockId: filter_drawer
+                method: setOpen
+                args:
+                  open: false
+  - id: explainer_modal
+    type: Modal
+    properties:
+      title: {{ explainer_title }}
+      footer: false
+      width: 700px
+    blocks:
+      - id: questionnaire_text
+        type: Markdown
+        properties:
+          renderHtml: true
+          content:
+            _var: calculations_explainer
+  - id: title_box
+    type: Box
+    blocks:
+      - id: title
+        type: Title
+        layout:
+          grow: 1
+          shrink: 1
+          size: auto
+        properties:
+          content: {{ dashboard_name }}
+          level: 4
+      - id: affix_filter_button
+        type: Affix
+        layout:
+          grow: 0
+          shrink: 1
+          size: auto
+          contentGutter: [8,0]
+        properties:
+          offsetTop: 16
+        blocks:
+          - id: explainer_button
+            type: Button
+            layout:
+              grow: 0
+              shrink: 1
+              size: auto
+            properties:
+              title: Info
+              icon: QuestionCircleOutlined
+              hideActionLoading: true
+              shape: round
+              type: default
+            actions:
+              onClick:
+                - id: open_explainer_modal
+                  type: CallMethod
+                  params:
+                    blockId: explainer_modal
+                    method: toggleOpen
+          - id: filter_button
+            type: Button
+            layout:
+              grow: 0
+              shrink: 1
+              size: auto
+            properties:
+              title: Filter
+              icon: FilterOutlined
+              hideActionLoading: true
+              shape: round
+            actions:
+              onClick:
+                - id: open_filter_drawer
+                  type: CallMethod
+                  params:
+                    blockId: filter_drawer
+                    method: toggleOpen
+
+  - id: company_overview_box
+    type: Box
+    blocks:
+      - id: company_overview_title
+        type: Html
+        layout:
+          size: auto
+        properties:
+          html: '<h4>Company</h4>'
+      - id: company_overview_card
+        type: Card
+        layout:
+          contentGutter: [8,0]
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/composite_overview.yaml.njk
+              vars:
+                id: company
+                connectionId: {{ connectionId }}
+                division: company
+                chart_height: 70
+                current_csi_title: 
+                  _nunjucks: | 
+                    {% raw %}CSI {{ end_month | date("MMM YYYY") }} {% endraw %}
+                current_nps_title: 
+                  _nunjucks: | 
+                    {% raw %}NPS {{ end_month | date("MMM YYYY") }} {% endraw %}
+                color: "#002766"
+
+  - id: divisions_overview_box
+    type: Box
+    blocks:
+      - id: divisions_overview_title
+        type: Html
+        layout:
+          size: auto
+        properties:
+          html: '<h4>Divisions</h4>'
+      - id: divisions_overview_card
+        type: Card
+        layout:
+          contentGutter: [8,0]
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/composite_overview.yaml.njk
+              vars:
+                id: sales_division
+                connectionId: {{ connectionId }}
+                division: sales
+                current_csi_title: 
+                  _nunjucks: | 
+                    {% raw %}CSI Sales {% endraw %}
+                current_nps_title: 
+                  _nunjucks: | 
+                    {% raw %}NPS Sales {% endraw %}
+                # current_title_size: 14
+                # current_score_size: 35
+                # fytd_title_size: 12
+                # fytd_score_size: 25
+                # chart_height: 70
+                color: "#002766"
+          - id: divider_divisions
+            type: Divider
+          - _ref:
+              path: templates/components/composite_overview.yaml.njk
+              vars:
+                id: after_sales
+                connectionId: {{ connectionId }}
+                division: after_sales
+                current_csi_title: 
+                  _nunjucks: | 
+                    {% raw %}CSI After Sales {% endraw %}
+                current_nps_title: 
+                  _nunjucks: | 
+                    {% raw %}NPS After Sales {% endraw %}
+                # current_title_size: 14
+                # current_score_size: 35
+                # fytd_title_size: 12
+                # fytd_score_size: 25
+                # chart_height: 70
+                color: "#002766"
+
+  - id: projects_overview_box
+    type: Box
+    blocks:
+      - id: projects_overview_title
+        type: Html
+        layout:
+          size: auto
+        properties:
+          html: '<h4>Line of Business</h4>'
+      - id: projects_overview_card
+        type: Card
+        layout:
+          contentGutter: [8,0]
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/composite_overview.yaml.njk
+              vars:
+                id: parts
+                connectionId: {{ connectionId }}
+                division: parts
+                current_csi_title: 
+                  _nunjucks: | 
+                    {% raw %}CSI Parts {% endraw %}
+                current_nps_title: 
+                  _nunjucks: | 
+                    {% raw %}NPS Parts {% endraw %}
+                # current_title_size: 14
+                # current_score_size: 35
+                # fytd_title_size: 12
+                # fytd_score_size: 25
+                # chart_height: 70
+                color: "#002766"
+          - id: divider_projects_1
+            type: Divider
+          - _ref:
+              path: templates/components/composite_overview.yaml.njk
+              vars:
+                id: service
+                connectionId: {{ connectionId }}
+                division: service
+                current_csi_title: 
+                  _nunjucks: | 
+                    {% raw %}CSI Service {% endraw %}
+                current_nps_title: 
+                  _nunjucks: | 
+                    {% raw %}NPS Service {% endraw %}
+                # current_title_size: 14
+                # current_score_size: 35
+                # fytd_title_size: 12
+                # fytd_score_size: 25
+                # chart_height: 70
+                color: "#002766"
+
+  - id: yoy_box
+    type: Box
+    blocks:
+      - id: csi_yoy_title
+        type: Html
+        layout:
+          span: 12
+          # grow: 1
+          # shrink: 1
+          # size: auto
+        properties:
+          html: '<h4>CSI Year on Year</h4>'
+      - id: nps_yoy_title
+        type: Html
+        layout:
+          span: 12
+          # grow: 0
+          # shrink: 1
+          # size: auto
+        properties:
+          html: '<h4>NPS Year on Year</h4>'
+      - id: yoy_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/overview_composite_year_on_year_microcharts_selector.yaml.njk
+              vars:
+                id: yoy_overview
+                connectionId: {{ connectionId }}
+                chart_height: 300
+
+  - id: divisions_overview_csi_box
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - id: divisions_overview_csi_title
+        type: Html
+        properties:
+          html: '<h4>CSI by level of analysis</h4>'
+      - id: divisions_overview_csi_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/overview_csi_divisions_chart.yaml.njk
+              vars:
+                id: divisions_overview_csi
+                connectionId: {{ connectionId }}
+                height: 400
+                colors:
+                  _global: colors.elements
+
+  - id: divisions_overview_nps_box
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - id: divisions_overview_nps_title
+        type: Html
+        properties:
+          html: '<h4>NPS by level of analysis</h4>'
+      - id: divisions_overview_nps_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/overview_nps_divisions_chart.yaml.njk
+              vars:
+                id: divisions_overview_nps
+                connectionId: {{ connectionId }}
+                height: 400
+                colors:
+                  _global: colors.elements
+
+  - id: divisions_quarterly_csi_box
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - id: divisions_quarterly_csi_title
+        type: Html
+        properties:
+          html: '<h4>CSI by quarter</h4>'
+      - id: divisions_quarterly_csi_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/division_quarters_table.yaml.njk
+              vars:
+                id: divisions_quarterly_csi
+                connectionId: {{ connectionId }}
+                division: csi
+                height: 370
+  - id: divisions_quarterly_nps_box
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - id: divisions_quarterly_nps_title
+        type: Html
+        properties:
+          html: '<h4>NPS by quarter</h4>'
+      - id: divisions_quarterly_nps_card
+        type: Card
+        properties:
+          size: small
+          inner: true
+        blocks:
+          - _ref:
+              path: templates/components/division_quarters_table.yaml.njk
+              vars:
+                id: divisions_quarterly_nps
+                connectionId: {{ connectionId }}
+                division: nps
+                height: 370

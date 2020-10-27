@@ -1,0 +1,498 @@
+## -----------------
+## 
+## overview_csi_trend_microchart
+## Calculate csi and render trend micro timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   division: _integer_ (REQUIRED) - which division to show. [company,sales,after_sales,parts,service]_[company,sales,after_sales,parts,service]
+##   month_average: _number_ - number of months over which to calculate the rolling average.
+##   height: _number_ - height of the timeline chart.
+##   color: _string_ - color of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+layout:
+  flex:
+    _var:
+      name: flex
+      default: null
+  span:
+    _var:
+      name: span
+      default: 24
+  sm:
+    size: auto
+requests:
+  - id: csi_trend_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month:
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - $add:
+                                - 23
+                                - _var: month_average
+        - $group:
+            _id: $Mnt
+            sales_csi_den:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - 1
+                  - 0
+            sales_csi_num:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - $csi
+                  - null
+            sales_csi:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - $csi
+                  - null
+
+            parts_csi_den:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - 1
+                  - 0
+            parts_csi_num:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - $csi
+                  - null
+            parts_csi:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - $csi
+                  - null
+
+            service_csi_den:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - 1
+                  - 0
+            service_csi_num:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - $csi
+                  - null
+            service_csi:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - $csi
+                  - null
+
+            after_sales_csi_den:
+              $sum:
+                $cond:
+                  - $in:
+                    - $project
+                    - - Parts
+                      - Service
+                  - 1
+                  - 0
+            after_sales_csi_num:
+              $sum:
+                $cond:
+                  - $in:
+                    - $project
+                    - - Parts
+                      - Service
+                  - $csi
+                  - null
+            after_sales_csi:
+              $avg:
+                $cond:
+                  - $in:
+                    - $project
+                    - - Parts
+                      - Service
+                  - $csi
+                  - null
+        - $sort:
+            _id: 1
+        - $group:
+            _id: 0
+            A:
+              $push:
+                month: $_id
+
+                company_csi: 
+                  $sum:
+                    - $multiply:
+                        - $sales_csi
+                        - 0.5
+                    - $multiply:
+                        - $parts_csi
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_csi
+                                  - $service_csi
+                            - 0.5
+                            - 0.25
+                    - $multiply:
+                        - $service_csi
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_csi
+                                  - $parts_csi
+                            - 0.5
+                            - 0.25
+
+                after_sales_csi: $after_sales_csi
+                after_sales_csi_den: $after_sales_csi_den
+                after_sales_csi_num: $after_sales_csi_num
+
+                parts_csi: $parts_csi
+                parts_csi_den: $parts_csi_den
+                parts_csi_num: $parts_csi_num
+
+                sales_csi: $sales_csi
+                sales_csi_den: $sales_csi_den
+                sales_csi_num: $sales_csi_num
+                
+                service_csi: $service_csi
+                service_csi_den: $service_csi_den
+                service_csi_num: $service_csi_num
+
+        - $project:
+            A:
+              $map:
+                input:
+                  $range:
+                    - 0
+                    - $subtract:
+                        - $size: $A
+                        - $subtract:
+                            - _var: month_average
+                            - 1
+                in:
+                  month:
+                    $arrayElemAt:
+                      - $A.month
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+
+                  company_csi_current:
+                    $arrayElemAt:
+                      - $A.company_csi
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+
+                  sales_csi_current:
+                    $arrayElemAt:
+                      - $A.sales_csi
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+
+                  sales_csi:
+                    $cond:
+                      - $eq:
+                          - $sum:
+                              $slice:
+                                - $A.sales_csi_den
+                                - $$this
+                                - _var: month_average
+                          - 0
+                      - null
+                      - $divide:
+                          - $sum:
+                              $slice:
+                                - $A.sales_csi_num
+                                - $$this
+                                - _var: month_average
+                          - $sum:
+                              $slice:
+                                - $A.sales_csi_den
+                                - $$this
+                                - _var: month_average
+
+                  parts_csi_current:
+                    $arrayElemAt:
+                      - $A.parts_csi
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  parts_csi:
+                    $cond:
+                      - $eq:
+                          - $sum:
+                              $slice:
+                                - $A.parts_csi_den
+                                - $$this
+                                - _var: month_average
+                          - 0
+                      - null
+                      - $divide:
+                          - $sum:
+                              $slice:
+                                - $A.parts_csi_num
+                                - $$this
+                                - _var: month_average
+                          - $sum:
+                              $slice:
+                                - $A.parts_csi_den
+                                - $$this
+                                - _var: month_average
+
+                  service_csi_current:
+                    $arrayElemAt:
+                      - $A.service_csi
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  service_csi:
+                    $cond:
+                      - $eq:
+                          - $sum:
+                              $slice:
+                                - $A.service_csi_den
+                                - $$this
+                                - _var: month_average
+                          - 0
+                      - null
+                      - $divide:
+                          - $sum:
+                              $slice:
+                                - $A.service_csi_num
+                                - $$this
+                                - _var: month_average
+                          - $sum:
+                              $slice:
+                                - $A.service_csi_den
+                                - $$this
+                                - _var: month_average
+
+                  after_sales_csi_current:
+                    $arrayElemAt:
+                      - $A.after_sales_csi
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  after_sales_csi:
+                    $cond:
+                      - $eq:
+                          - $sum:
+                              $slice:
+                                - $A.after_sales_csi_den
+                                - $$this
+                                - _var: month_average
+                          - 0
+                      - null
+                      - $divide:
+                          - $sum:
+                              $slice:
+                                - $A.after_sales_csi_num
+                                - $$this
+                                - _var: month_average
+                          - $sum:
+                              $slice:
+                                - $A.after_sales_csi_den
+                                - $$this
+                                - _var: month_average
+
+        - $unwind:
+            path: $A
+        - $replaceRoot:
+            newRoot: $A
+        - $project:
+            month: 1
+            csi_company: 
+              $sum:
+                - $multiply:
+                    - $sales_csi
+                    - 0.5
+                - $multiply:
+                    - $parts_csi
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_csi
+                              - $service_csi
+                        - 0.5
+                        - 0.25
+                - $multiply:
+                    - $service_csi
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_csi
+                              - $parts_csi
+                        - 0.5
+                        - 0.25
+            csi_company_current: $company_csi_current
+            nps_company_current: $company_nps_current
+
+            csi_sales: $sales_csi
+            csi_sales_current: $sales_csi_current
+
+            csi_after_sales: $after_sales_csi
+            csi_after_sales_current: $after_sales_csi_current
+
+            csi_parts: $parts_csi
+            csi_parts_current: $parts_csi_current
+
+            csi_service: $service_csi
+            csi_service_current: $service_csi_current
+
+properties:
+  height: 
+    _var: height
+  paddingTop: 0
+  paddingRight: 0
+  paddingBottom: 0
+  paddingLeft: 0
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      - _var: color
+  data:
+    _request: csi_trend_{{ id }}
+  dateFormatter: 
+    dateFormat: MMM yyyy
+  xAxes:
+    - type: DateAxis
+      id: category
+      baseInterval:
+        timeUnit: month
+        count: 1
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  yAxes:
+    - type: ValueAxis
+      # min: 0
+      # max: 100
+      extraMin: 0.1
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: LineSeries
+      name: CSI
+      connect: false
+      fill: 
+        type: LinearGradient
+        rotation: 90
+        gradientUnits: userSpaceOnUse
+        stops:
+          - color: 
+              _var: color
+            opacity: 1
+          - color: 
+              _var: color
+            opacity: 0
+      fillOpacity: 0.5
+      strokeWidth: 4
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: csi_{{ division }}
+        dateX: month
+        current: csi_{{ division }}_current
+      bullets:
+        - type: CircleBullet
+          tooltipText: "{dateX}\nRolling Avg: {valueY}\nMonth CSI: {current}"
+          strokeWidth: 8
+          scale: 0.5
+          circle: 
+            radius: 0
+          dateFormatter: 
+            dateFormat: MMM yyyy
+          states:
+            hover:
+              properties:
+                scale: 1.2
+        

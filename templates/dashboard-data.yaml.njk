@@ -1,7 +1,12 @@
 id: {{ page_id }}-data
 type: PageHeaderMenu
+public: true
 properties:
   title: {{ dashboard_name }}
+  logoSrc:
+    _global: company_logo
+  header:
+    theme: light
 layout:
   contentGutter: 8
 actions:
@@ -208,8 +213,6 @@ requests:
                 comment: { $ifNull: [ ${{ item.comment }}, null ] }
 {% endfor %}
         - $addFields:
-            phone: $TELNUM
-            interaction_date: $date
             elements_comment:
               $filter:
                 input: $elements
@@ -240,8 +243,8 @@ requests:
                           - $elements_comment.name
                     - 0
         - $sort:
-            interview_date: -1
-            score: 1
+            Mnt: -1
+            csi: 1
         - $skip:
             _state: pagination.skip
         - $limit:
@@ -471,6 +474,7 @@ blocks:
           label:
             disabled: true
           placeholder: {{ item.name }}
+          showSearch: true
           options:
             _state: {{ item.field }}_list
         actions:

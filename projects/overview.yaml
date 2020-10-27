@@ -1,0 +1,34 @@
+_ref:
+  path: templates/dashboard-overview.yaml.njk
+  vars:
+    page_id: overview
+    dashboard_name: Overview
+    connectionId: cx_collection
+    projects:
+      - Parts
+      - Service
+      - Sales
+    explainer_title: Overview NPS / CSI Calculations
+    calculations_explainer: |
+      ### Grouped data by
+      - Sales
+      - Parts
+      - Service
+      - <b>After sales division:</b> Parts and Service
+      - <b>Sales division:</b> Sales
+      - Company <b>Overall</b> (all projects) \[Parts, Sales and Service\]
+
+      ### Weightings
+      Each project contributes to the overall score in a fixed proportion. It can be decided how much each project must contribute to the score:
+      - After Sales division: <b>Parts 25%, Service 25%</b>
+      - Sales division: <b>Sales 50%</b>
+
+      ### NPS
+      - Promoter: Rating from 9 up 
+      - At Risk: Rating from 5 and down
+      - Indifferent: Rating between 6 and 8
+
+      ### Key:
+      - NPS: Net Promoter Score
+      - CSI: Customer Satisfaction Index
+      - FYtD: Financial Year to Date

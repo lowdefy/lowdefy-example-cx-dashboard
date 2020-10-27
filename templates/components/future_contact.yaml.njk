@@ -1,0 +1,151 @@
+## -----------------
+## 
+## future_contact
+## Preferences for future contact for current month.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentGutter: 8
+requests:
+  - id: contact_aggregation_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            $and:
+              - published: true
+              - project:
+                  $in:
+                    _state: projects
+              - Mnt:
+                  $eq:
+                    _state: end_month
+        - $group:
+            _id: 0
+            total:
+              $sum: 1
+            telephonically:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $C50
+                      - Telephonically
+                  - 1
+                  - 0
+            email:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $C50
+                      - Email
+                  - 1
+                  - 0
+            other:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $C50
+                      - Other
+                  - 1
+                  - 0
+        - $addFields:
+            percent_telephonically:
+              $round:
+                - $multiply:
+                    - $divide:
+                        - $telephonically
+                        - $total
+                    - 100
+                - 0
+            percent_email:
+              $round:
+                - $multiply:
+                    - $divide:
+                        - $email
+                        - $total
+                    - 100
+                - 0
+            percent_other:
+              $round:
+                - $multiply:
+                    - $divide:
+                        - $other
+                        - $total
+                    - 100
+                - 0
+blocks:
+  - id: title_telephone_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 14px
+    properties:
+      content: Telephonically
+  - id: telephonically_{{ id }}
+    type: Progress
+    properties:
+      showInfo: true
+      status: normal
+      percent:
+        _get:
+          key: 0.percent_telephonically
+          from:
+            _mql_expr:
+              $ifNull:
+                - _request: contact_aggregation_{{ id }}
+                - [{ percent_telephonically: 0 }]
+      strokeColor:
+        _var: colors.0
+  - id: title_email_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 14px
+    properties:
+      content: Email
+  - id: email_{{ id }}
+    type: Progress
+    properties:
+      showInfo: true
+      status: normal
+      percent:
+        _get:
+          key: 0.percent_email
+          from:
+            _mql_expr:
+              $ifNull:
+                - _request: contact_aggregation_{{ id }}
+                - [{ percent_email: 0 }]
+      strokeColor:
+        _var: colors.1
+  - id: title_other_{{ id }}
+    type: Markdown
+    style:
+        '.markdown-body':
+          fontSize: 14px
+    properties:
+      content: Other
+  - id: other_{{ id }}
+    type: Progress
+    properties:
+      showInfo: true
+      status: normal
+      percent:
+        _get:
+          key: 0.percent_other
+          from:
+            _mql_expr:
+              $ifNull:
+                - _request: contact_aggregation_{{ id }}
+                - [{ percent_other: 0 }]
+      strokeColor:
+        _var: colors.2
+

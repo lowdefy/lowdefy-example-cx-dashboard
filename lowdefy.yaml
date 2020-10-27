@@ -1,8 +1,8 @@
 global:
   _ref: global.yaml
 
-# menus:
-#   - _ref: menu.yaml
+menus:
+  - _ref: menu.yaml
 
 connections:
   - id: cx_collection
@@ -14,5 +14,6 @@ connections:
         _secret: lowdefy_examples_mdb
 
 pages:
-  - _ref: projects/dashboard-main.yaml
-  - _ref: projects/dashboard-data.yaml
+  - _ref: projects/overview.yaml
+  - _ref: projects/project-main.yaml
+  - _ref: projects/project-data.yaml

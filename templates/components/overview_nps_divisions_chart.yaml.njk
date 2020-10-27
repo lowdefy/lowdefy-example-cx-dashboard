@@ -1,0 +1,744 @@
+## -----------------
+## 
+## overview_nps_divisions_chart
+## Calculate indices and render trend timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   span: _integer_ - Span of the component. Default 24.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+layout:
+  contentJustify: end
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: divisions_overview_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in: 
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month: 
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - 12
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+        - $group:
+            _id: $Mnt
+            financial_year:
+              $first: $financial_year
+            sales_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            sales_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            sales_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            parts_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            parts_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            parts_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            service_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            service_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            service_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            after_sales_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            after_sales_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            after_sales_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+        - $sort:
+            _id: 1
+        - $project:
+            Mnt: $_id
+            financial_year: 1
+            period:
+              $subtract:
+                - _state: end_month
+                - $_id
+            divisions:
+              - name: Sales
+                nps_sample: $sales_nps_sample
+                promoters: $sales_promoters
+                detractors: $sales_detractors
+              - name: After Sales
+                nps_sample: $after_sales_nps_sample
+                promoters: $after_sales_promoters
+                detractors: $after_sales_detractors
+              - name: Parts
+                nps_sample: $parts_nps_sample
+                promoters: $parts_promoters
+                detractors: $parts_detractors
+              - name: Service
+                nps_sample: $service_nps_sample
+                promoters: $service_promoters
+                detractors: $service_detractors
+        - $unwind:
+            path: $divisions
+            includeArrayIndex: rank
+        - $group:
+            _id: $divisions.name
+            rank:
+              $first: $rank
+            nps_sample_1month:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $Mnt
+                    - _state: end_month
+                  - $divisions.nps_sample
+                  - 0
+            promoters_1month:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $Mnt
+                    - _state: end_month
+                  - $divisions.promoters
+                  - 0
+            detractors_1month:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $Mnt
+                    - _state: end_month
+                  - $divisions.detractors
+                  - 0
+
+            nps_sample_3month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,3]
+                  - $divisions.nps_sample
+                  - 0
+            promoters_3month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,3]
+                  - $divisions.promoters
+                  - 0
+            detractors_3month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,3]
+                  - $divisions.detractors
+                  - 0
+
+            nps_sample_6month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,6]
+                  - $divisions.nps_sample
+                  - 0
+            promoters_6month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,6]
+                  - $divisions.promoters
+                  - 0
+            detractors_6month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,6]
+                  - $divisions.detractors
+                  - 0
+
+            nps_sample_12month:
+              $sum: $divisions.nps_sample
+            promoters_12month:
+              $sum: $divisions.promoters
+            detractors_12month:
+              $sum: $divisions.detractors
+              
+            nps_sample_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.nps_sample
+                  - 0
+            promoters_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.promoters
+                  - 0
+            detractors_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.detractors
+                  - 0
+        - $sort: 
+            rank: 1
+        - $project:
+            nps_1month:
+              $cond:
+                - $eq:
+                    - $nps_sample_1month
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_1month
+                            - $detractors_1month
+                        - $nps_sample_1month
+                    - 100
+            nps_3month:
+              $cond:
+                - $eq:
+                    - $nps_sample_3month
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_3month
+                            - $detractors_3month
+                        - $nps_sample_3month
+                    - 100
+            nps_6month:
+              $cond:
+                - $eq:
+                    - $nps_sample_6month
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_6month
+                            - $detractors_6month
+                        - $nps_sample_6month
+                    - 100
+            nps_12month:
+              $cond:
+                - $eq:
+                    - $nps_sample_12month
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_12month
+                            - $detractors_12month
+                        - $nps_sample_12month
+                    - 100
+            nps_fytd:
+              $cond:
+                - $eq:
+                    - $nps_sample_fytd
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_fytd
+                            - $detractors_fytd
+                        - $nps_sample_fytd
+                    - 100
+        - $group:
+            _id: 0
+            divisions:
+              $push: $$ROOT
+            nps_1month:
+              $push:
+                k: $_id
+                v: $nps_1month
+            nps_3month:
+              $push:
+                k: $_id
+                v: $nps_3month
+            nps_6month:
+              $push:
+                k: $_id
+                v: $nps_6month
+            nps_12month:
+              $push:
+                k: $_id
+                v: $nps_12month
+            nps_fytd:
+              $push:
+                k: $_id
+                v: $nps_fytd
+
+        - $project:
+            divisions: 1
+            nps_1month:
+              $reduce:
+                input: $nps_1month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            nps_3month:
+              $reduce:
+                input: $nps_3month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            nps_6month:
+              $reduce:
+                input: $nps_6month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            nps_12month:
+              $reduce:
+                input: $nps_12month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            nps_fytd:
+              $reduce:
+                input: $nps_fytd
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+        - $project:
+            nps_fytd: 1
+            A:
+              $concatArrays:
+                - - _id: Company
+                    nps_1month: $nps_1month
+                    nps_3month: $nps_3month
+                    nps_6month: $nps_6month
+                    nps_12month: $nps_12month
+                    nps_fytd: $nps_fytd
+                - $divisions
+        - $unwind:
+            path: $A
+        - $addFields:
+            A.company_fytd: $nps_fytd
+        - $replaceRoot:
+            newRoot: $A
+
+properties:
+  height: 
+    _var: height
+  paddingRight: 0
+  # paddingBottom: 0
+  paddingLeft: 0
+  marginLeft: 20
+  marginRight: 20
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      _var: colors
+  data:
+    _mql_aggregate:
+      on:
+        _request: divisions_overview_{{ id }}
+      pipeline:
+        - $addFields:
+            all:
+              $concat:
+                - "Company FYtD: [bold]"
+                - $toString: 
+                    $ifNull:
+                      - $round:
+                        - $company_fytd
+                        - 1
+                      - ""
+                - "[/]\n"
+                - "1 Month: [bold]"
+                - $toString: 
+                    $ifNull:
+                      - $round:
+                        - $nps_1month
+                        - 1
+                      - ""
+                - "[/]\n"
+                - "3 Months: [bold]"
+                - $toString: 
+                    $round:
+                      - $nps_3month
+                      - 1
+                - "[/]\n"
+                - "6 Months: [bold]"
+                - $toString: 
+                    $round:
+                      - $nps_6month
+                      - 1
+                - "[/]\n"
+                - "FYtD: [bold]"
+                - $toString: 
+                    $round:
+                      - $nps_fytd
+                      - 1
+                - "[/]\n"
+  legend:
+    type: Legend
+    position: bottom
+    # useDefaultMarker: true
+    fontSize: 12
+    # maxWidth: 100
+    itemContainers: 
+      # width: 40
+      # paddingTop: 0
+      paddingBottom: 0
+      paddingLeft: -15
+      paddingRight: 0
+  xAxes:
+    - type: CategoryAxis
+      id: division
+      cursorTooltipEnabled: false
+      dataFields:
+        category: _id
+      renderer:
+        minGridDistance: 20
+        grid:
+          location: 0
+        labels:
+          contentAlign: right
+          rotation: -60
+          fontSize: 12
+          verticalCenter: middle
+          horizontalCenter: right
+  yAxes:
+    - type: ValueAxis
+      extraMax: 0.1
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      # renderer:
+      #   grid:
+      #     disabled: true
+      #   labels:
+      #     disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: division
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: ColumnSeries
+      name: 1 Month
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: nps_1month
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: ColumnSeries
+      name: 3 Months
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: nps_3month
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: ColumnSeries
+      name: 6 Months
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: nps_6month
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: ColumnSeries
+      name: FYtD
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: nps_fytd
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: LineSeries
+      name: Company FYtD
+      connect: false
+      strokeWidth: 4
+      stroke: "#000"
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: company_fytd
+        categoryX: _id
+        all: all
+      tooltipText: '{all}'
+      tooltip:
+        getFillFromObject: false
+        background:
+          fill: "#000"

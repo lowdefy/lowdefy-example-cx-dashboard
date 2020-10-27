@@ -1,0 +1,1066 @@
+## -----------------
+## 
+## overview_nps_trend_microchart
+## Calculate csi and render trend micro timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   division: _integer_ (REQUIRED) - which division to show. [company,sales,after_sales,parts,service]_[company,sales,after_sales,parts,service]
+##   month_average: _number_ - number of months over which to calculate the rolling average.
+##   height: _number_ - height of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+layout:
+  flex:
+    _var:
+      name: flex
+      default: null
+  span:
+    _var:
+      name: span
+      default: 24
+  sm:
+    size: auto
+requests:
+  - id: nps_trend_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month:
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - $add:
+                                - 23
+                                - _var: month_average
+        - $group:
+            _id: $Mnt
+            sales_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            sales_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            sales_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            parts_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            parts_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            parts_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            service_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            service_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            service_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            after_sales_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            after_sales_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            after_sales_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+        - $addFields:
+            sales_nps:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $sales_promoters
+                            - $sales_detractors
+                        - $sales_nps_sample
+                    - 100
+            sales_percent_promoters:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $sales_promoters
+                        - $sales_nps_sample
+                    - 100
+            sales_percent_detractors:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $sales_detractors
+                        - $sales_nps_sample
+                    - 100
+            parts_nps:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $parts_promoters
+                            - $parts_detractors
+                        - $parts_nps_sample
+                    - 100
+            parts_percent_promoters:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $parts_promoters
+                        - $parts_nps_sample
+                    - 100
+            parts_percent_detractors:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $parts_detractors
+                        - $parts_nps_sample
+                    - 100
+            service_nps:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $service_promoters
+                            - $service_detractors
+                        - $service_nps_sample
+                    - 100
+            service_percent_promoters:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $service_promoters
+                        - $service_nps_sample
+                    - 100
+            service_percent_detractors:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $service_detractors
+                        - $service_nps_sample
+                    - 100
+            after_sales_nps:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $after_sales_promoters
+                            - $after_sales_detractors
+                        - $after_sales_nps_sample
+                    - 100
+            after_sales_percent_promoters:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $after_sales_promoters
+                        - $after_sales_nps_sample
+                    - 100
+            after_sales_percent_detractors:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $after_sales_detractors
+                        - $after_sales_nps_sample
+                    - 100
+        - $sort:
+            _id: 1
+        - $group:
+            _id: 0
+            A:
+              $push:
+                month: $_id
+
+                company_nps: 
+                  $sum:
+                    - $multiply:
+                        - $sales_nps
+                        - 0.5
+                    - $multiply:
+                        - $parts_nps
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_nps
+                                  - $service_nps
+                            - 0.5
+                            - 0.25
+                    - $multiply:
+                        - $service_nps
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_nps
+                                  - $parts_nps
+                            - 0.5
+                            - 0.25
+                company_percent_promoters: 
+                  $sum:
+                    - $multiply:
+                        - $sales_percent_promoters
+                        - 0.5
+                    - $multiply:
+                        - $parts_percent_promoters
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_percent_promoters
+                                  - $service_percent_promoters
+                            - 0.5
+                            - 0.25
+                    - $multiply:
+                        - $service_percent_promoters
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_percent_promoters
+                                  - $parts_percent_promoters
+                            - 0.5
+                            - 0.25
+                company_percent_detractors: 
+                  $sum:
+                    - $multiply:
+                        - $sales_percent_detractors
+                        - 0.5
+                    - $multiply:
+                        - $parts_percent_detractors
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_percent_detractors
+                                  - $service_percent_detractors
+                            - 0.5
+                            - 0.25
+                    - $multiply:
+                        - $service_percent_detractors
+                        - $cond:
+                            - $in:
+                                - null
+                                - - $sales_percent_detractors
+                                  - $parts_percent_detractors
+                            - 0.5
+                            - 0.25
+
+                after_sales_nps: $after_sales_nps
+                after_sales_nps_sample: $after_sales_nps_sample
+                after_sales_promoters: $after_sales_promoters
+                after_sales_detractors: $after_sales_detractors
+                after_sales_percent_promoters: $after_sales_percent_promoters
+                after_sales_percent_detractors: $after_sales_percent_detractors
+
+                parts_nps: $parts_nps
+                parts_nps_sample: $parts_nps_sample
+                parts_promoters: $parts_promoters
+                parts_detractors: $parts_detractors
+                parts_percent_promoters: $parts_percent_promoters
+                parts_percent_detractors: $parts_percent_detractors
+
+                sales_nps: $sales_nps
+                sales_nps_sample: $sales_nps_sample
+                sales_promoters: $sales_promoters
+                sales_detractors: $sales_detractors
+                sales_percent_promoters: $sales_percent_promoters
+                sales_percent_detractors: $sales_percent_detractors
+                
+                service_nps: $service_nps
+                service_nps_sample: $service_nps_sample
+                service_promoters: $service_promoters
+                service_detractors: $service_detractors
+                service_percent_promoters: $service_percent_promoters
+                service_percent_detractors: $service_percent_detractors
+
+        - $project:
+            A:
+              $map:
+                input:
+                  $range:
+                    - 0
+                    - $subtract:
+                        - $size: $A
+                        - $subtract:
+                            - _var: month_average
+                            - 1
+                in:
+                  month:
+                    $arrayElemAt:
+                      - $A.month
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+
+                  company_nps_current:
+                    $arrayElemAt:
+                      - $A.company_nps
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  company_percent_promoters_current:
+                    $arrayElemAt:
+                      - $A.company_percent_promoters
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  company_percent_detractors_current:
+                    $arrayElemAt:
+                      - $A.company_percent_detractors
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+
+                  sales_nps_current:
+                    $arrayElemAt:
+                      - $A.sales_nps
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  sales_percent_promoters_current:
+                    $arrayElemAt:
+                      - $A.sales_percent_promoters
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  sales_percent_detractors_current:
+                    $arrayElemAt:
+                      - $A.sales_percent_detractors
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+
+                  sales_nps_sample:
+                    $sum:
+                      $slice:
+                        - $A.sales_nps_sample
+                        - $$this
+                        - _var: month_average
+                  sales_promoters:
+                    $sum:
+                      $slice:
+                        - $A.sales_promoters
+                        - $$this
+                        - _var: month_average
+                  sales_detractors:
+                    $sum:
+                      $slice:
+                        - $A.sales_detractors
+                        - $$this
+                        - _var: month_average
+
+                  parts_nps_current:
+                    $arrayElemAt:
+                      - $A.parts_nps
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  parts_percent_promoters_current:
+                    $arrayElemAt:
+                      - $A.parts_percent_promoters
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  parts_percent_detractors_current:
+                    $arrayElemAt:
+                      - $A.parts_percent_detractors
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  parts_nps_sample:
+                    $sum:
+                      $slice:
+                        - $A.parts_nps_sample
+                        - $$this
+                        - _var: month_average
+                  parts_promoters:
+                    $sum:
+                      $slice:
+                        - $A.parts_promoters
+                        - $$this
+                        - _var: month_average
+                  parts_detractors:
+                    $sum:
+                      $slice:
+                        - $A.parts_detractors
+                        - $$this
+                        - _var: month_average
+
+                  service_nps_current:
+                    $arrayElemAt:
+                      - $A.service_nps
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  service_percent_promoters_current:
+                    $arrayElemAt:
+                      - $A.service_percent_promoters
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  service_percent_detractors_current:
+                    $arrayElemAt:
+                      - $A.service_percent_detractors
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  service_nps_sample:
+                    $sum:
+                      $slice:
+                        - $A.service_nps_sample
+                        - $$this
+                        - _var: month_average
+                  service_promoters:
+                    $sum:
+                      $slice:
+                        - $A.service_promoters
+                        - $$this
+                        - _var: month_average
+                  service_detractors:
+                    $sum:
+                      $slice:
+                        - $A.service_detractors
+                        - $$this
+                        - _var: month_average
+
+                  after_sales_nps_current:
+                    $arrayElemAt:
+                      - $A.after_sales_nps
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  after_sales_percent_promoters_current:
+                    $arrayElemAt:
+                      - $A.after_sales_percent_promoters
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  after_sales_percent_detractors_current:
+                    $arrayElemAt:
+                      - $A.after_sales_percent_detractors
+                      - $sum:
+                          - $$this
+                          - $subtract:
+                              - _var: month_average
+                              - 1
+                  after_sales_nps_sample:
+                    $sum:
+                      $slice:
+                        - $A.after_sales_nps_sample
+                        - $$this
+                        - _var: month_average
+                  after_sales_promoters:
+                    $sum:
+                      $slice:
+                        - $A.after_sales_promoters
+                        - $$this
+                        - _var: month_average
+                  after_sales_detractors:
+                    $sum:
+                      $slice:
+                        - $A.after_sales_detractors
+                        - $$this
+                        - _var: month_average
+
+        - $unwind:
+            path: $A
+        - $replaceRoot:
+            newRoot: $A
+        - $addFields:
+            sales_nps:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $sales_promoters
+                            - $sales_detractors
+                        - $sales_nps_sample
+                    - 100
+            sales_percent_promoters:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $sales_promoters
+                        - $sales_nps_sample
+                    - 100
+            sales_percent_detractors:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $sales_detractors
+                        - $sales_nps_sample
+                    - 100
+            parts_nps:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $parts_promoters
+                            - $parts_detractors
+                        - $parts_nps_sample
+                    - 100
+            parts_percent_promoters:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $parts_promoters
+                        - $parts_nps_sample
+                    - 100
+            parts_percent_detractors:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $parts_detractors
+                        - $parts_nps_sample
+                    - 100
+            service_nps:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $service_promoters
+                            - $service_detractors
+                        - $service_nps_sample
+                    - 100
+            service_percent_promoters:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $service_promoters
+                        - $service_nps_sample
+                    - 100
+            service_percent_detractors:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $service_detractors
+                        - $service_nps_sample
+                    - 100
+            after_sales_nps:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $after_sales_promoters
+                            - $after_sales_detractors
+                        - $after_sales_nps_sample
+                    - 100
+            after_sales_percent_promoters:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $after_sales_promoters
+                        - $after_sales_nps_sample
+                    - 100
+            after_sales_percent_detractors:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $after_sales_detractors
+                        - $after_sales_nps_sample
+                    - 100
+        - $project:
+            month: 1
+            nps_company: 
+              $sum:
+                - $multiply:
+                    - $sales_nps
+                    - 0.5
+                - $multiply:
+                    - $parts_nps
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_nps
+                              - $service_nps
+                        - 0.5
+                        - 0.25
+                - $multiply:
+                    - $service_nps
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_nps
+                              - $parts_nps
+                        - 0.5
+                        - 0.25
+            percent_promoters_company: 
+              $sum:
+                - $multiply:
+                    - $sales_percent_promoters
+                    - 0.5
+                - $multiply:
+                    - $parts_percent_promoters
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_percent_promoters
+                              - $service_percent_promoters
+                        - 0.5
+                        - 0.25
+                - $multiply:
+                    - $service_percent_promoters
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_percent_promoters
+                              - $parts_percent_promoters
+                        - 0.5
+                        - 0.25
+            percent_detractors_company: 
+              $sum:
+                - $multiply:
+                    - $sales_percent_detractors
+                    - 0.5
+                - $multiply:
+                    - $parts_percent_detractors
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_percent_detractors
+                              - $service_percent_detractors
+                        - 0.5
+                        - 0.25
+                - $multiply:
+                    - $service_percent_detractors
+                    - $cond:
+                        - $in:
+                            - null
+                            - - $sales_percent_detractors
+                              - $parts_percent_detractors
+                        - 0.5
+                        - 0.25
+            nps_company_current: $company_nps_current
+            percent_promoters_company_current: $company_percent_promoters_current
+            percent_detractors_company_current: $company_percent_detractors_current
+
+            nps_sales: $sales_nps
+            percent_promoters_sales: $sales_percent_promoters
+            percent_detractors_sales: $sales_percent_detractors
+            nps_sales_current: $sales_nps_current
+            percent_promoters_sales_current: $sales_percent_promoters_current
+            percent_detractors_sales_current: $sales_percent_detractors_current
+
+            nps_after_sales: $after_sales_nps
+            percent_promoters_after_sales: $after_sales_percent_promoters
+            percent_detractors_after_sales: $after_sales_percent_detractors
+            nps_after_sales_current: $after_sales_nps_current
+            percent_promoters_after_sales_current: $after_sales_percent_promoters_current
+            percent_detractors_after_sales_current: $after_sales_percent_detractors_current
+
+            nps_parts: $parts_nps
+            percent_promoters_parts: $parts_percent_promoters
+            percent_detractors_parts: $parts_percent_detractors
+            nps_parts_current: $parts_nps_current
+            percent_promoters_parts_current: $parts_percent_promoters_current
+            percent_detractors_parts_current: $parts_percent_detractors_current
+
+            nps_service: $service_nps
+            percent_promoters_service: $service_percent_promoters
+            percent_detractors_service: $service_percent_detractors
+            nps_service_current: $service_nps_current
+            percent_promoters_service_current: $service_percent_promoters_current
+            percent_detractors_service_current: $service_percent_detractors_current
+
+properties:
+  data:
+    _request: nps_trend_{{ id }}
+  height: 
+    _var: height
+  paddingTop: 0
+  paddingRight: 0
+  paddingBottom: 0
+  paddingLeft: 0
+  marginLeft: 20
+  marginRight: 20
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      - _global: colors.nps.promoter
+      - _global: colors.nps.detractor
+      - _global: colors.nps.nps
+  dateFormatter: 
+    dateFormat: MMM yyyy
+  xAxes:
+    - type: DateAxis
+      id: category
+      baseInterval:
+        timeUnit: month
+        count: 1
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  yAxes:
+    - type: ValueAxis
+      # min: 0
+      # max: 100
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: LineSeries
+      name: 'promoters'
+      connect: 
+        $literal: false
+      fill: 
+        type: LinearGradient
+        rotation: 90
+        gradientUnits: userSpaceOnUse
+        stops:
+          - color:
+              _global: colors.nps.promoter
+            opacity: 1
+          - color:
+              _global: colors.nps.promoter
+            opacity: 0
+      fillOpacity: 0.5
+      strokeWidth: 2
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: percent_promoters_{{ division }}
+        dateX: month
+    - type: LineSeries
+      name: 'detractors'
+      connect: 
+        $literal: false
+      fill: 
+        type: LinearGradient
+        rotation: 90
+        gradientUnits: userSpaceOnUse
+        stops:
+          - color:
+              _global: colors.nps.detractor
+            opacity: 1
+          - color:
+              _global: colors.nps.detractor
+            opacity: 0
+      fillOpacity: 0.5
+      strokeWidth: 2
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: percent_detractors_{{ division }}
+        dateX: month
+        sample: sample
+    - type: LineSeries
+      name: 'nps'
+      connect: 
+        $literal: false
+      strokeWidth: 4
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: nps_{{ division }}
+        dateX: month
+        current_nps: nps_{{ division }}_current
+        current_percent_promoters: percent_promoters_{{ division }}_current
+        current_percent_detractors: percent_detractors_{{ division }}_current
+      bullets:
+        # - type: LabelBullet
+        #   label:
+        #     text: "{valueY}"
+        #     dy: -10
+        #     fontSize: 12
+        #     opacity: 0
+        #     propertyFields:
+        #       opacity: opacity
+        - type: CircleBullet
+          tooltipText: "{dateX}\nRolling Avg: {valueY}\nMonth NPS: {current_nps}\nPromoters: {current_percent_promoters}%\nDetractors: {current_percent_detractors}%"
+          strokeWidth: 8
+          scale: 0.5
+          circle: 
+            radius: 0
+          dateFormatter: 
+            dateFormat: MMM yyyy
+          states:
+            hover:
+              properties:
+                scale: 1.2

@@ -1,0 +1,2666 @@
+## -----------------
+## 
+## division_quarters_table.yaml
+## Calculate indices and trend table.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   index: _string_ - index to show results for. [csi,nps]
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: center
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: division_quarters_table_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $subtract:
+                            - _state: max_financial_year
+                            - 1
+                        month: 1
+                        day: 1
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+        - $addFields:
+            year:
+              $year: $Mnt
+            rank:
+              $cond:
+                - $eq:
+                    - $year: $Mnt
+                    - _state: max_financial_year
+                - '1'
+                - '0'
+            current_year:
+              _state: max_financial_year
+            quarter:
+              $switch:
+                branches:
+                  - case:
+                      $lte:
+                        - $month: $Mnt
+                        - 3
+                    then: Q1
+                  - case:
+                      $lte:
+                        - $month: $Mnt
+                        - 6
+                    then: Q2
+                  - case:
+                      $lte:
+                        - $month: $Mnt
+                        - 9
+                    then: Q3
+                default: Q4
+        - $group:
+            _id:
+              division: $project
+            csi_previous_q1:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_previous_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_previous_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_previous_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_previous_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_previous_q2:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_previous_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_previous_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_previous_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_previous_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_previous_q3:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_previous_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_previous_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_previous_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_previous_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_previous_q4:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_previous_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $lt:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_previous_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_previous_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_previous_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_previous_year:
+              $avg:
+                $cond:
+                  - $lt:
+                      - $year
+                      - $current_year
+                  - $csi
+                  - null
+            sample_previous_year:
+              $sum:
+                $cond:
+                  - $lt:
+                      - $year
+                      - $current_year
+                  - 1
+                  - 0
+            detractors_previous_year:
+              $sum:
+                $cond:
+                  - $and:
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_previous_year:
+              $sum:
+                $cond:
+                  - $and:
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_previous_year:
+              $sum:
+                $cond:
+                  - $and:
+                      - $lt:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_current_q1:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_current_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_current_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_current_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_current_q1:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q1
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_current_q2:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_current_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_current_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_current_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_current_q2:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q2
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_current_q3:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_current_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_current_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_current_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_current_q3:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q3
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_current_q4:
+              $avg:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - $csi
+                  - null
+            sample_current_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $eq:
+                          - $year
+                          - $current_year
+                  - 1
+                  - 0
+            detractors_current_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_current_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_current_q4:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $quarter
+                          - Q4
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+            csi_current_year:
+              $avg:
+                $cond:
+                  - $eq:
+                      - $year
+                      - $current_year
+                  - $csi
+                  - null
+            sample_current_year:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $year
+                      - $current_year
+                  - 1
+                  - 0
+            detractors_current_year:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Detractor
+                  - 1
+                  - 0
+            promoters_current_year:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $eq:
+                          - $promoter
+                          - Promoter
+                  - 1
+                  - 0
+            nps_sum_current_year:
+              $sum:
+                $cond:
+                  - $and:
+                      - $eq:
+                          - $year
+                          - $current_year
+                      - $ne:
+                          - $promoter
+                          - null
+                  - 1
+                  - 0
+        - $addFields:
+            nps_previous_q1:
+              $cond:
+                - $eq:
+                    - $nps_sum_previous_q1
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_previous_q1
+                            - $detractors_previous_q1
+                        - $nps_sum_previous_q1
+                    - 100
+            nps_previous_q2:
+              $cond:
+                - $eq:
+                    - $nps_sum_previous_q2
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_previous_q2
+                            - $detractors_previous_q2
+                        - $nps_sum_previous_q2
+                    - 100
+            nps_previous_q3:
+              $cond:
+                - $eq:
+                    - $nps_sum_previous_q3
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_previous_q3
+                            - $detractors_previous_q3
+                        - $nps_sum_previous_q3
+                    - 100
+            nps_previous_q4:
+              $cond:
+                - $eq:
+                    - $nps_sum_previous_q4
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_previous_q4
+                            - $detractors_previous_q4
+                        - $nps_sum_previous_q4
+                    - 100
+            nps_previous_year:
+              $cond:
+                - $eq:
+                    - $nps_sum_previous_year
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_previous_year
+                            - $detractors_previous_year
+                        - $nps_sum_previous_year
+                    - 100
+            nps_current_q1:
+              $cond:
+                - $eq:
+                    - $nps_sum_current_q1
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_current_q1
+                            - $detractors_current_q1
+                        - $nps_sum_current_q1
+                    - 100
+            nps_current_q2:
+              $cond:
+                - $eq:
+                    - $nps_sum_current_q2
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_current_q2
+                            - $detractors_current_q2
+                        - $nps_sum_current_q2
+                    - 100
+            nps_current_q3:
+              $cond:
+                - $eq:
+                    - $nps_sum_current_q3
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_current_q3
+                            - $detractors_current_q3
+                        - $nps_sum_current_q3
+                    - 100
+            nps_current_q4:
+              $cond:
+                - $eq:
+                    - $nps_sum_current_q4
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_current_q4
+                            - $detractors_current_q4
+                        - $nps_sum_current_q4
+                    - 100
+            nps_current_year:
+              $cond:
+                - $eq:
+                    - $nps_sum_current_year
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $promoters_current_year
+                            - $detractors_current_year
+                        - $nps_sum_current_year
+                    - 100
+
+        - $group:
+            _id: 0
+            A:
+              $push: $$ROOT
+        - $addFields:
+            B:
+              - _id:
+                  division: Company
+                csi_previous_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q1
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_previous_q1
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q1
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q1
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_previous_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q1
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_previous_q1
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q1
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q1
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_previous_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q2
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_previous_q2
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q2
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q2
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_previous_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q2
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_previous_q2
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q2
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q2
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_previous_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q3
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_previous_q3
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q3
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q3
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_previous_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q3
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_previous_q3
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q3
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q3
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_previous_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q4
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_previous_q4
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q4
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_q4
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_previous_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q4
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_previous_q4
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q4
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_q4
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_previous_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_year
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_previous_year
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_year
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_previous_year
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_previous_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_year
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_previous_year
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_year
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_previous_year
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_current_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q1
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_current_q1
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q1
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q1
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_current_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q1
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_current_q1
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q1
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q1
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_current_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q2
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_current_q2
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q2
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q2
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_current_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q2
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_current_q2
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q2
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q2
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_current_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q3
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_current_q3
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q3
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q3
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_current_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q3
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_current_q3
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q3
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q3
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_current_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q4
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_current_q4
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q4
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_q4
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_current_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q4
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_current_q4
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q4
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_q4
+                                      - 0
+                                  - 0.5
+                                  - 0
+                csi_current_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_year
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.csi_current_year
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_year
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.sample_current_year
+                                      - 0
+                                  - 0.5
+                                  - 0
+                nps_current_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_year
+                                  - 0.25
+                              - $multiply:
+                                  - $$this.nps_current_year
+                                  - 0.5
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_year
+                                      - 0
+                                  - 0.25
+                                  - 0
+                              - $cond:
+                                  - $ne:
+                                      - $$this.nps_sum_current_year
+                                      - 0
+                                  - 0.5
+                                  - 0
+              - _id:
+                  division: After Sales
+                csi_previous_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q1
+                                  - $$this.sample_previous_q1
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_previous_q1
+                              - 0
+                nps_previous_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q1
+                                  - $$this.nps_sum_previous_q1
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_previous_q1
+                              - 0
+                csi_previous_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q2
+                                  - $$this.sample_previous_q2
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_previous_q2
+                              - 0
+                nps_previous_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q2
+                                  - $$this.nps_sum_previous_q2
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_previous_q2
+                              - 0
+                csi_previous_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q3
+                                  - $$this.sample_previous_q3
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_previous_q3
+                              - 0
+                nps_previous_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q3
+                                  - $$this.nps_sum_previous_q3
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_previous_q3
+                              - 0
+                csi_previous_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_q4
+                                  - $$this.sample_previous_q4
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_previous_q4
+                              - 0
+                nps_previous_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_q4
+                                  - $$this.nps_sum_previous_q4
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_previous_q4
+                              - 0
+                csi_previous_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_previous_year
+                                  - $$this.sample_previous_year
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_previous_year
+                              - 0
+                nps_previous_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_previous_year
+                                  - $$this.nps_sum_previous_year
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_previous_year
+                              - 0
+                csi_current_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q1
+                                  - $$this.sample_current_q1
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_current_q1
+                              - 0
+                nps_current_q1:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q1
+                                  - $$this.nps_sum_current_q1
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_current_q1
+                              - 0
+                csi_current_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q2
+                                  - $$this.sample_current_q2
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_current_q2
+                              - 0
+                nps_current_q2:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q2
+                                  - $$this.nps_sum_current_q2
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_current_q2
+                              - 0
+                csi_current_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q3
+                                  - $$this.sample_current_q3
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_current_q3
+                              - 0
+                nps_current_q3:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q3
+                                  - $$this.nps_sum_current_q3
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_current_q3
+                              - 0
+                csi_current_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_q4
+                                  - $$this.sample_current_q4
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_current_q4
+                              - 0
+                nps_current_q4:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_q4
+                                  - $$this.nps_sum_current_q4
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_current_q4
+                              - 0
+                csi_current_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.csi_current_year
+                                  - $$this.sample_current_year
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.sample_current_year
+                              - 0
+                nps_current_year:
+                  $reduce:
+                    input: $A
+                    initialValue:
+                      'n': 0
+                      d: 0
+                    in:
+                      'n':
+                        $sum:
+                          - $$value.n
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $multiply:
+                                  - $$this.nps_current_year
+                                  - $$this.nps_sum_current_year
+                              - 0
+                      d:
+                        $sum:
+                          - $$value.d
+                          - $cond:
+                              - $ne:
+                                  - $$this._id.division
+                                  - Sales
+                              - $$this.nps_sum_current_year
+                              - 0
+        - $project:
+            A:
+              $concatArrays:
+                - $B
+                - $A
+        - $unwind:
+            path: $A
+            includeArrayIndex: rank
+        - $sort:
+            rank: 1
+        - $replaceRoot:
+            newRoot: $A
+        - $project:
+            _id: 0
+            division: $_id.division
+            csi_previous_q1:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_previous_q1.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_previous_q1.n
+                        - $csi_previous_q1.d
+                - $csi_previous_q1
+            nps_previous_q1:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_previous_q1.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_previous_q1.n
+                        - $nps_previous_q1.d
+                - $nps_previous_q1
+            csi_previous_q2:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_previous_q2.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_previous_q2.n
+                        - $csi_previous_q2.d
+                - $csi_previous_q2
+            nps_previous_q2:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_previous_q2.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_previous_q2.n
+                        - $nps_previous_q2.d
+                - $nps_previous_q2
+            csi_previous_q3:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_previous_q3.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_previous_q3.n
+                        - $csi_previous_q3.d
+                - $csi_previous_q3
+            nps_previous_q3:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_previous_q3.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_previous_q3.n
+                        - $nps_previous_q3.d
+                - $nps_previous_q3
+            csi_previous_q4:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_previous_q4.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_previous_q4.n
+                        - $csi_previous_q4.d
+                - $csi_previous_q4
+            nps_previous_q4:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_previous_q4.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_previous_q4.n
+                        - $nps_previous_q4.d
+                - $nps_previous_q4
+            csi_previous_year:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_previous_year.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_previous_year.n
+                        - $csi_previous_year.d
+                - $csi_previous_year
+            nps_previous_year:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_previous_year.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_previous_year.n
+                        - $nps_previous_year.d
+                - $nps_previous_year
+            csi_current_q1:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_current_q1.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_current_q1.n
+                        - $csi_current_q1.d
+                - $csi_current_q1
+            nps_current_q1:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_current_q1.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_current_q1.n
+                        - $nps_current_q1.d
+                - $nps_current_q1
+            csi_current_q2:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_current_q2.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_current_q2.n
+                        - $csi_current_q2.d
+                - $csi_current_q2
+            nps_current_q2:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_current_q2.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_current_q2.n
+                        - $nps_current_q2.d
+                - $nps_current_q2
+            csi_current_q3:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_current_q3.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_current_q3.n
+                        - $csi_current_q3.d
+                - $csi_current_q3
+            nps_current_q3:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_current_q3.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_current_q3.n
+                        - $nps_current_q3.d
+                - $nps_current_q3
+            csi_current_q4:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_current_q4.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_current_q4.n
+                        - $csi_current_q4.d
+                - $csi_current_q4
+            nps_current_q4:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_current_q4.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_current_q4.n
+                        - $nps_current_q4.d
+                - $nps_current_q4
+            csi_current_year:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $csi_current_year.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $csi_current_year.n
+                        - $csi_current_year.d
+                - $csi_current_year
+            nps_current_year:
+              $cond:
+                - $in:
+                    - $_id.division
+                    - - After Sales
+                      - Company
+                - $cond:
+                    - $eq:
+                        - $nps_current_year.d
+                        - 0
+                    - null
+                    - $divide:
+                        - $nps_current_year.n
+                        - $nps_current_year.d
+                - $nps_current_year
+        - $addFields:
+            csi_current_q1:
+              $round:
+                - $csi_current_q1
+                - 1
+            csi_current_q2:
+              $round:
+                - $csi_current_q2
+                - 1
+            csi_current_q3:
+              $round:
+                - $csi_current_q3
+                - 1
+            csi_current_q4:
+              $round:
+                - $csi_current_q4
+                - 1
+            csi_current_year:
+              $round:
+                - $csi_current_year
+                - 1
+            csi_previous_q1:
+              $round:
+                - $csi_previous_q1
+                - 1
+            csi_previous_q2:
+              $round:
+                - $csi_previous_q2
+                - 1
+            csi_previous_q3:
+              $round:
+                - $csi_previous_q3
+                - 1
+            csi_previous_q4:
+              $round:
+                - $csi_previous_q4
+                - 1
+            csi_previous_year:
+              $round:
+                - $csi_previous_year
+                - 1
+            nps_current_q1:
+              $round:
+                - $nps_current_q1
+                - 1
+            nps_current_q2:
+              $round:
+                - $nps_current_q2
+                - 1
+            nps_current_q3:
+              $round:
+                - $nps_current_q3
+                - 1
+            nps_current_q4:
+              $round:
+                - $nps_current_q4
+                - 1
+            nps_current_year:
+              $round:
+                - $nps_current_year
+                - 1
+            nps_previous_q1:
+              $round:
+                - $nps_previous_q1
+                - 1
+            nps_previous_q2:
+              $round:
+                - $nps_previous_q2
+                - 1
+            nps_previous_q3:
+              $round:
+                - $nps_previous_q3
+                - 1
+            nps_previous_q4:
+              $round:
+                - $nps_previous_q4
+                - 1
+            nps_previous_year:
+              $round:
+                - $nps_previous_year
+                - 1
+
+blocks:
+  - id: divisions_quarter_table_{{ id }}
+    type: AgGrid
+    layout:
+      size: 1100
+    properties:
+      theme: basic
+      height:
+        _var: height
+      rowData:
+        _request: division_quarters_table_{{ id }}
+      defaultColDef:
+        width: 75
+      columnDefs:
+        - headerName: ""
+          cellStyle:
+            textAlign: center
+          children:
+            - headerName: Division
+              field: division
+              width: 120
+              pinned: left
+        - headerName: 2019
+          cellStyle:
+            textAlign: center
+          children:
+            - headerName: Q1
+              field: {{ division }}_previous_q1
+            - headerName: Q2
+              field: {{ division }}_previous_q2
+            - headerName: Q3
+              field: {{ division }}_previous_q3
+            - headerName: Q4
+              field: {{ division }}_previous_q4
+            - headerName: Full Year
+              field: {{ division }}_previous_year
+              width: 100
+        - headerName: 2020
+          children:
+            - headerName: Q1
+              field: {{ division }}_current_q1
+            - headerName: Q2
+              field: {{ division }}_current_q2
+            - headerName: Q3
+              field: {{ division }}_current_q3
+            - headerName: Q4
+              field: {{ division }}_current_q4
+            - headerName: YtD
+              field: {{ division }}_current_year
+  # - id: divisions_quarter_table_{{ id }}
+  #   type: Markdown
+  #   style:
+  #       '.markdown-body':
+  #         fontSize: 14px
+  #   properties:
+  #     renderHtml: true
+  #     content:
+  #       _nunjucks:
+  #         template: |
+  #           {% raw %}
+  #           | {{ division }} | Diff (%) | {{ current_month | date('MMM YYYY') }}|  3 Month | 6 Month | FYtD |
+  #           |-------|:-----:|:-----:|:-----:|:-----:|:-----:|
+  #           {% for index in data -%}
+  #           | {{ index.name }} | {% if index.change < -3 %} <div style='color: #cf1322; font-size: 12px;' > <b>{{ index.change | round(1) }} </b></div> {% elif index.change > 3 %} <div style='color: #237804; font-size: 12px;' ><b> +{{ index.change | round(1) }} </b></div> {% else %} <div style='font-size: 12px;' >{{ index.change | round(1) }}</div> {% endif %} |{% for score in [index.current, index.3month, index.6month, index.fytd] %}{% if score < 7.5 %} <div style='color: #cf1322;' ><b> {{ score | round(1) }} </b></div> {% elif score >= 9 %} <div style='color: #237804;' ><b> {{ score | round(1) }} </b></div> {% else %} {{ score | round(1) }} {% endif %} |{% endfor %}
+  #           {% endfor -%}
+  #           {% endraw %}
+  #         on:
+  #           data:
+  #             _get:
+  #               key: '0.A'
+  #               from:
+  #                 _request: division_quarters_table_{{ id }}

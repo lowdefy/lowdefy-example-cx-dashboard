@@ -1,0 +1,642 @@
+## -----------------
+## 
+## overview_csi_divisions_chart
+## Calculate indices and render trend timeline chart.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   span: _integer_ - Span of the component. Default 24.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+layout:
+  contentJustify: end
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: divisions_overview_{{ id }}
+    type: MongoDBAggregation
+    connectionId:
+      _var: connectionId
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in: 
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month: 
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - 12
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+        - $group:
+            _id: $Mnt
+            financial_year:
+              $first: $financial_year
+            sales_csi_den:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - 1
+                  - 0
+            sales_csi_num:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - $csi
+                  - 0
+            sales_csi:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - $csi
+                  - null
+
+            parts_csi_den:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - 1
+                  - 0
+            parts_csi_num:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - $csi
+                  - 0
+            parts_csi:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - $csi
+                  - null
+
+            service_csi_den:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - 1
+                  - 0
+            service_csi_num:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - $csi
+                  - 0
+            service_csi:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - $csi
+                  - null
+
+            after_sales_csi_den:
+              $sum:
+                $cond:
+                  - $in:
+                    - $project
+                    - - Parts
+                      - Service
+                  - 1
+                  - 0
+            after_sales_csi_num:
+              $sum:
+                $cond:
+                  - $in:
+                    - $project
+                    - - Parts
+                      - Service
+                  - $csi
+                  - 0
+            after_sales_csi:
+              $avg:
+                $cond:
+                  - $in:
+                    - $project
+                    - - Parts
+                      - Service
+                  - $csi
+                  - null
+        - $sort:
+            _id: 1
+        - $project:
+            Mnt: $_id
+            financial_year: 1
+            period:
+              $subtract:
+                - _state: end_month
+                - $_id
+            divisions:
+              - name: Sales
+                score: $sales_csi
+                num: $sales_csi_num
+                den: $sales_csi_den
+              - name: After Sales
+                score: $after_sales_csi
+                num: $after_sales_csi_num
+                den: $after_sales_csi_den
+              - name: Parts
+                score: $parts_csi
+                num: $parts_csi_num
+                den: $parts_csi_den
+              - name: Service
+                score: $service_csi
+                num: $service_csi_num
+                den: $service_csi_den
+        - $unwind:
+            path: $divisions
+            includeArrayIndex: rank
+        - $group:
+            _id: $divisions.name
+            rank:
+              $first: $rank
+            den_1month:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $Mnt
+                    - _state: end_month
+                  - $divisions.den
+                  - 0
+            num_1month:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $Mnt
+                    - _state: end_month
+                  - $divisions.num
+                  - 0
+            score_1month:
+              $avg:
+                $cond:
+                  - $eq:
+                    - $Mnt
+                    - _state: end_month
+                  - $divisions.score
+                  - null
+
+            den_3month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,3]
+                  - $divisions.den
+                  - 0
+            num_3month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,3]
+                  - $divisions.num
+                  - 0
+
+            den_6month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,6]
+                  - $divisions.den
+                  - 0
+            num_6month:
+              $sum:
+                $cond:
+                  - $lt:
+                    - $period
+                    - $multiply: [1000,60,60,24,31,6]
+                  - $divisions.num
+                  - 0
+
+            den_12month:
+              $sum: $divisions.den
+            num_12month:
+              $sum: $divisions.num
+              
+            den_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.den
+                  - 0
+            num_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.num
+                  - 0
+        - $sort: 
+            rank: 1
+        - $project:
+            csi_1month: $score_1month
+            csi_3month:
+              $cond:
+                - $eq:
+                    - $den_3month
+                    - 0
+                - null
+                - $divide:
+                    - $num_3month
+                    - $den_3month
+            csi_6month:
+              $cond:
+                - $eq:
+                    - $den_6month
+                    - 0
+                - null
+                - $divide:
+                    - $num_6month
+                    - $den_6month
+            csi_12month:
+              $cond:
+                - $eq:
+                    - $den_12month
+                    - 0
+                - null
+                - $divide:
+                    - $num_12month
+                    - $den_12month
+            csi_fytd:
+              $cond:
+                - $eq:
+                    - $den_fytd
+                    - 0
+                - null
+                - $divide:
+                    - $num_fytd
+                    - $den_fytd
+
+        - $group:
+            _id: 0
+            divisions:
+              $push: $$ROOT
+            csi_1month:
+              $push:
+                k: $_id
+                v: $csi_1month
+            csi_3month:
+              $push:
+                k: $_id
+                v: $csi_3month
+            csi_6month:
+              $push:
+                k: $_id
+                v: $csi_6month
+            csi_12month:
+              $push:
+                k: $_id
+                v: $csi_12month
+            csi_fytd:
+              $push:
+                k: $_id
+                v: $csi_fytd
+
+        - $project:
+            divisions: 1
+            csi_1month:
+              $reduce:
+                input: $csi_1month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            csi_3month:
+              $reduce:
+                input: $csi_3month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            csi_6month:
+              $reduce:
+                input: $csi_6month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            csi_12month:
+              $reduce:
+                input: $csi_12month
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+            csi_fytd:
+              $reduce:
+                input: $csi_fytd
+                initialValue: 0
+                in:
+                  $sum:
+                    - $$value
+                    - $multiply:
+                        - $$this.v
+                        - $cond:
+                            - $eq:
+                                - $$this.k
+                                - Sales
+                            - 0.5
+                            - $cond:
+                                - $in:
+                                    - $$this.k
+                                    - [Parts, Service]
+                                - $cond:
+                                    - $eq:
+                                        - null
+                                        - $$this.v
+                                    - 0.5
+                                    - 0.25
+                                - 0
+        - $project:
+            csi_fytd: 1
+            A:
+              $concatArrays:
+                - - _id: Company
+                    csi_1month: $csi_1month
+                    csi_3month: $csi_3month
+                    csi_6month: $csi_6month
+                    csi_12month: $csi_12month
+                    csi_fytd: $csi_fytd
+                - $divisions
+        - $unwind:
+            path: $A
+        - $addFields:
+            A.company_fytd: $csi_fytd
+        - $replaceRoot:
+            newRoot: $A
+properties:
+  height: 
+    _var: height
+  paddingRight: 0
+  # paddingBottom: 0
+  paddingLeft: 0
+  marginLeft: 20
+  marginRight: 20
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      _var: colors
+  data:
+    _mql_aggregate:
+      on:
+        _request: divisions_overview_{{ id }}
+      pipeline:
+        - $addFields:
+            all:
+              $concat:
+                - "Company FYtD: [bold]"
+                - $toString: 
+                    $ifNull:
+                      - $round:
+                        - $company_fytd
+                        - 1
+                      - ""
+                - "[/]\n"
+                - "1 Month: [bold]"
+                - $toString: 
+                    $ifNull:
+                      - $round:
+                        - $csi_1month
+                        - 1
+                      - ""
+                - "[/]\n"
+                - "3 Months: [bold]"
+                - $toString: 
+                    $round:
+                      - $csi_3month
+                      - 1
+                - "[/]\n"
+                - "6 Months: [bold]"
+                - $toString: 
+                    $round:
+                      - $csi_6month
+                      - 1
+                - "[/]\n"
+                - "FYtD: [bold]"
+                - $toString: 
+                    $round:
+                      - $csi_fytd
+                      - 1
+                - "[/]\n"
+  legend:
+    type: Legend
+    position: bottom
+    # useDefaultMarker: true
+    fontSize: 12
+    # maxWidth: 100
+    itemContainers: 
+      # width: 40
+      # paddingTop: 0
+      paddingBottom: 0
+      paddingLeft: -15
+      paddingRight: 0
+  xAxes:
+    - type: CategoryAxis
+      id: division
+      cursorTooltipEnabled: false
+      dataFields:
+        category: _id
+      renderer:
+        minGridDistance: 20
+        grid:
+          location: 0
+        labels:
+          contentAlign: right
+          rotation: -60
+          fontSize: 12
+          verticalCenter: middle
+          horizontalCenter: right
+  yAxes:
+    - type: ValueAxis
+      extraMax: 0.1
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      # renderer:
+      #   grid:
+      #     disabled: true
+      #   labels:
+      #     disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: division
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: ColumnSeries
+      name: 1 Month
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: csi_1month
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: ColumnSeries
+      name: 3 Months
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: csi_3month
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: ColumnSeries
+      name: 6 Months
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: csi_6month
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: ColumnSeries
+      name: FYtD
+      fillOpacity: 0.5
+      dataFields:
+        categoryX: _id
+        valueY: csi_fytd
+      legendSettings:
+        itemValueText: '{valueY}'
+      # columns:
+      #   tooltipText: '{name}: {valueY}'
+    - type: LineSeries
+      name: Company FYtD
+      connect: false
+      strokeWidth: 4
+      stroke: "#000"
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: company_fytd
+        categoryX: _id
+        all: all
+      tooltipText: '{all}'
+      tooltip:
+        getFillFromObject: false
+        background:
+          fill: "#000"

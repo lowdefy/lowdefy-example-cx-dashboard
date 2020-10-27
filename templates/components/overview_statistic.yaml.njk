@@ -1,0 +1,1283 @@
+## -----------------
+## 
+## overview_statistic
+## Calculate index for selected period and show statistic along with movement from previous period
+## 
+## vars:
+##   id: _string_ (REQUIRED) - id for the component.
+##   span: _integer_ - Span of the component. Default 24.
+##   size_auto: _boolean_ - Sets layout to flex if set to true. Default null
+##   connectionId: _string_ (REQUIRED) - MongoDB collection connection id.
+##   request: _string_ (REQUIRED) - Request name from which to read data.
+##   index: _string_ (REQUIRED) - the index field used to calculate the monthly average on. [csi,nps]
+##   division: _integer_ (REQUIRED) - which division to show. [company,sales,after_sales,parts,service]_[company,sales,after_sales,parts,service]
+##   period: _integer_ (REQUIRED) - which period. [fytd,current]
+##   index_name: _string_ (REQUIRED) - the index name used to label the field value.
+##   title_font_size: _integer_ - the font size of the title (the index_name). Default: 18.
+##   index_font_size: _integer_ - the font size of the index score. Default: 60.
+##   index_font_weight: _integer_ - the font weight of the index score. Default: 200.
+##   subtitle_font_size:  _integer_ - the font size of the subtitle (the movement). Default: 16.
+##   icon_size:  _integer_ - the font size of the subtitle (the movement). Default: 14.
+##   hide_movement: _boolean_ - if true, hides the subtitle/ movement part. Default: false.
+## ------------------
+
+id: overview_statistic_{{ id }}
+type: Box
+layout:
+  contentAlign: middle
+  flex:
+    _var:
+      name: flex
+      default: null
+  span:
+    _var:
+      name: span
+      default: 24
+  sm:
+    size: auto
+requests:
+  - id: overview_index_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+            financial_year:
+              _state: max_financial_year
+        - $match:
+            Mnt:
+              $lte:
+                _state: end_month
+        - $facet:
+            fytd:
+              - $group:
+                  _id: 0
+                  sales_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Sales
+                        - 1
+                        - 0
+                  sales_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Sales
+                        - $csi
+                        - null
+                  sales_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  sales_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  sales_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+
+                  parts_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Parts
+                        - 1
+                        - 0
+                  parts_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Parts
+                        - $csi
+                        - null
+                  parts_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  parts_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  parts_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+                            
+                  service_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Service
+                        - 1
+                        - 0
+                  service_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Service
+                        - $csi
+                        - null
+                  service_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  service_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  service_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+
+                  after_sales_sample:
+                    $sum:
+                      $cond:
+                        - $in:
+                          - $project
+                          - - Parts
+                            - Service
+                        - 1
+                        - 0
+                  after_sales_csi:
+                    $avg:
+                      $cond:
+                        - $in:
+                          - $project
+                          - - Parts
+                            - Service
+                        - $csi
+                        - null
+                  after_sales_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  after_sales_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  after_sales_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+              - $addFields:
+                  sales_nps:
+                    $cond:
+                      - $eq:
+                          - $sales_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $sales_promoters
+                                  - $sales_detractors
+                              - $sales_nps_sample
+                          - 100
+                  parts_nps:
+                    $cond:
+                      - $eq:
+                          - $parts_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $parts_promoters
+                                  - $parts_detractors
+                              - $parts_nps_sample
+                          - 100
+                  service_nps:
+                    $cond:
+                      - $eq:
+                          - $service_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $service_promoters
+                                  - $service_detractors
+                              - $service_nps_sample
+                          - 100
+                  after_sales_nps:
+                    $cond:
+                      - $eq:
+                          - $after_sales_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $after_sales_promoters
+                                  - $after_sales_detractors
+                              - $after_sales_nps_sample
+                          - 100
+              - $project:
+                  csi_company_fytd: 
+                    $sum:
+                      - $multiply:
+                          - $sales_csi
+                          - 0.5
+                      - $multiply:
+                          - $parts_csi
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_csi
+                                    - $service_csi
+                              - 0.5
+                              - 0.25
+                      - $multiply:
+                          - $service_csi
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_csi
+                                    - $parts_csi
+                              - 0.5
+                              - 0.25
+                  nps_company_fytd: 
+                    $sum:
+                      - $multiply:
+                          - $sales_nps
+                          - 0.5
+                      - $multiply:
+                          - $parts_nps
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_nps
+                                    - $service_nps
+                              - 0.5
+                              - 0.25
+                      - $multiply:
+                          - $service_nps
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_nps
+                                    - $parts_nps
+                              - 0.5
+                              - 0.25
+                  csi_sales_fytd: $sales_csi
+                  nps_sales_fytd: $sales_nps
+                  csi_after_sales_fytd: $after_sales_csi
+                  nps_after_sales_fytd: $after_sales_nps
+                  csi_parts_fytd: $parts_csi
+                  nps_parts_fytd: $parts_nps
+                  csi_service_fytd: $service_csi
+                  nps_service_fytd: $service_nps
+
+            current_month:
+              - $match:
+                  Mnt:
+                    _state: end_month
+              - $group:
+                  _id: 0
+                  month:
+                    $first: $Mnt
+                  sales_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Sales
+                        - 1
+                        - 0
+                  sales_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Sales
+                        - $csi
+                        - null
+                  sales_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  sales_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  sales_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+
+                  parts_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Parts
+                        - 1
+                        - 0
+                  parts_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Parts
+                        - $csi
+                        - null
+                  parts_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  parts_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  parts_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+                            
+                  service_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Service
+                        - 1
+                        - 0
+                  service_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Service
+                        - $csi
+                        - null
+                  service_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  service_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  service_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+
+                  after_sales_sample:
+                    $sum:
+                      $cond:
+                        - $in:
+                          - $project
+                          - - Parts
+                            - Service
+                        - 1
+                        - 0
+                  after_sales_csi:
+                    $avg:
+                      $cond:
+                        - $in:
+                          - $project
+                          - - Parts
+                            - Service
+                        - $csi
+                        - null
+                  after_sales_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  after_sales_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  after_sales_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+              - $addFields:
+                  sales_nps:
+                    $cond:
+                      - $eq:
+                          - $sales_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $sales_promoters
+                                  - $sales_detractors
+                              - $sales_nps_sample
+                          - 100
+                  parts_nps:
+                    $cond:
+                      - $eq:
+                          - $parts_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $parts_promoters
+                                  - $parts_detractors
+                              - $parts_nps_sample
+                          - 100
+                  service_nps:
+                    $cond:
+                      - $eq:
+                          - $service_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $service_promoters
+                                  - $service_detractors
+                              - $service_nps_sample
+                          - 100
+                  after_sales_nps:
+                    $cond:
+                      - $eq:
+                          - $after_sales_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $after_sales_promoters
+                                  - $after_sales_detractors
+                              - $after_sales_nps_sample
+                          - 100
+              - $project:
+                  month:
+                    $month: $month
+                  csi_company_current: 
+                    $sum:
+                      - $multiply:
+                          - $sales_csi
+                          - 0.5
+                      - $multiply:
+                          - $parts_csi
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_csi
+                                    - $service_csi
+                              - 0.5
+                              - 0.25
+                      - $multiply:
+                          - $service_csi
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_csi
+                                    - $parts_csi
+                              - 0.5
+                              - 0.25
+                  nps_company_current: 
+                    $sum:
+                      - $multiply:
+                          - $sales_nps
+                          - 0.5
+                      - $multiply:
+                          - $parts_nps
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_nps
+                                    - $service_nps
+                              - 0.5
+                              - 0.25
+                      - $multiply:
+                          - $service_nps
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_nps
+                                    - $parts_nps
+                              - 0.5
+                              - 0.25
+                  csi_sales_current: $sales_csi
+                  nps_sales_current: $sales_nps
+                  csi_after_sales_current: $after_sales_csi
+                  nps_after_sales_current: $after_sales_nps
+                  csi_parts_current: $parts_csi
+                  nps_parts_current: $parts_nps
+                  csi_service_current: $service_csi
+                  nps_service_current: $service_nps
+        
+            previous_month:
+              - $match:
+                  $expr:
+                    $eq:
+                      - $Mnt
+                      - $dateFromParts:
+                          year:
+                            $year:
+                              _state: end_month
+                          month:
+                            $subtract:
+                              - $month:
+                                  _state: end_month
+                              - 1
+              - $group:
+                  _id: 0
+                  month:
+                    $first: $Mnt
+                  sales_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Sales
+                        - 1
+                        - 0
+                  sales_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Sales
+                        - $csi
+                        - null
+                  sales_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  sales_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  sales_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Sales
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+
+                  parts_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Parts
+                        - 1
+                        - 0
+                  parts_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Parts
+                        - $csi
+                        - null
+                  parts_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  parts_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  parts_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Parts
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+                            
+                  service_sample:
+                    $sum:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Service
+                        - 1
+                        - 0
+                  service_csi:
+                    $avg:
+                      $cond:
+                        - $eq:
+                          - $project
+                          - Service
+                        - $csi
+                        - null
+                  service_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  service_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  service_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $eq:
+                            - $project
+                            - Service
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+
+                  after_sales_sample:
+                    $sum:
+                      $cond:
+                        - $in:
+                          - $project
+                          - - Parts
+                            - Service
+                        - 1
+                        - 0
+                  after_sales_csi:
+                    $avg:
+                      $cond:
+                        - $in:
+                          - $project
+                          - - Parts
+                            - Service
+                        - $csi
+                        - null
+                  after_sales_promoters:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $eq:
+                            - $promoter
+                            - Promoter
+                        - 1
+                        - 0
+                  after_sales_detractors:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $eq:
+                            - $promoter
+                            - Detractor
+                        - 1
+                        - 0
+                  after_sales_nps_sample:
+                    $sum:
+                      $cond:
+                        - $and:
+                          - $in:
+                            - $project
+                            - - Parts
+                              - Service
+                          - $ne:
+                            - $promoter
+                            - null
+                        - 1
+                        - 0
+              - $addFields:
+                  sales_nps:
+                    $cond:
+                      - $eq:
+                          - $sales_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $sales_promoters
+                                  - $sales_detractors
+                              - $sales_nps_sample
+                          - 100
+                  parts_nps:
+                    $cond:
+                      - $eq:
+                          - $parts_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $parts_promoters
+                                  - $parts_detractors
+                              - $parts_nps_sample
+                          - 100
+                  service_nps:
+                    $cond:
+                      - $eq:
+                          - $service_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $service_promoters
+                                  - $service_detractors
+                              - $service_nps_sample
+                          - 100
+                  after_sales_nps:
+                    $cond:
+                      - $eq:
+                          - $after_sales_nps_sample
+                          - 0
+                      - null
+                      - $multiply:
+                          - $divide:
+                              - $subtract:
+                                  - $after_sales_promoters
+                                  - $after_sales_detractors
+                              - $after_sales_nps_sample
+                          - 100
+              - $project:
+                  month:
+                    $month: $month
+                  csi_company_previous: 
+                    $sum:
+                      - $multiply:
+                          - $sales_csi
+                          - 0.5
+                      - $multiply:
+                          - $parts_csi
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_csi
+                                    - $service_csi
+                              - 0.5
+                              - 0.25
+                      - $multiply:
+                          - $service_csi
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_csi
+                                    - $parts_csi
+                              - 0.5
+                              - 0.25
+                  nps_company_previous: 
+                    $sum:
+                      - $multiply:
+                          - $sales_nps
+                          - 0.5
+                      - $multiply:
+                          - $parts_nps
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_nps
+                                    - $service_nps
+                              - 0.5
+                              - 0.25
+                      - $multiply:
+                          - $service_nps
+                          - $cond:
+                              - $in:
+                                  - null
+                                  - - $sales_nps
+                                    - $parts_nps
+                              - 0.5
+                              - 0.25
+                  csi_sales_previous: $sales_csi
+                  nps_sales_previous: $sales_nps
+                  csi_after_sales_previous: $after_sales_csi
+                  nps_after_sales_previous: $after_sales_nps
+                  csi_parts_previous: $parts_csi
+                  nps_parts_previous: $parts_nps
+                  csi_service_previous: $service_csi
+                  nps_service_previous: $service_nps
+        - $unwind:
+            path: $fytd
+        - $unwind:
+            path: $current_month
+        - $unwind:
+            path: $previous_month
+        - $project:
+            A:
+              $mergeObjects:
+                - $current_month
+                - csi_company_difference:
+                    $subtract:
+                      - $current_month.csi_company_current
+                      - $previous_month.csi_company_previous
+                  nps_company_difference:
+                    $subtract:
+                      - $current_month.nps_company_current
+                      - $previous_month.nps_company_previous 
+
+                  csi_sales_difference:
+                    $subtract:
+                      - $current_month.csi_sales_current
+                      - $previous_month.csi_sales_previous
+                  nps_sales_difference:
+                    $subtract:
+                      - $current_month.nps_sales_current
+                      - $previous_month.nps_sales_previous
+                  csi_after_sales_difference:
+                    $subtract:
+                      - $current_month.csi_after_sales_current
+                      - $previous_month.csi_after_sales_previous
+                  nps_after_sales_difference:
+                    $subtract:
+                      - $current_month.nps_after_sales_current
+                      - $previous_month.nps_after_sales_previous
+
+                  csi_parts_difference:
+                    $subtract:
+                      - $current_month.csi_parts_current
+                      - $previous_month.csi_parts_previous
+                  nps_parts_difference:
+                    $subtract:
+                      - $current_month.nps_parts_current
+                      - $previous_month.nps_parts_previous
+                  csi_service_difference:
+                    $subtract:
+                      - $current_month.csi_service_current
+                      - $previous_month.csi_service_previous
+                  nps_service_difference:
+                    $subtract:
+                      - $current_month.nps_service_current
+                      - $previous_month.nps_service_previous
+                - $fytd
+        - $replaceRoot:
+            newRoot: $A
+blocks:
+  - id: index_statistic_title_{{ id }}
+    type: Html
+    properties:
+      html: 
+        _nunjucks:
+          template: |
+            {% raw %}
+            <p style='font-size: {{ font_size }}px; line-height:1; margin: 0; text-align:right;'>
+              {{ index }}
+            </p>
+            {% endraw %}
+          on:
+            font_size:
+              _var:
+                name: title_font_size
+                default: 18
+            index:
+              _var: index_name # Might be an operator so don't use njks
+  - id: score_{{ id }}
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            {% raw %}
+            <p style='font-size:{{ font_size }}px; font-weight: {{ font_weight }}; line-height:1; margin: 5px; text-align:right;'>
+              {{ "-" if score == "loading" else score | round(1) }}
+            </p>
+            {% endraw %}
+          on:
+            font_size:
+              _var:
+                name: index_font_size
+                default: 60
+            font_weight:
+              _var:
+                name: index_font_weight
+                default: 200
+            score:
+              _get:
+                key: 0.{{ index }}_{{ division }}_{{ period }}
+                from:
+                  _mql_expr:
+                    $ifNull:
+                      - _request: overview_index_{{ id }}
+                      - [{ {{ index }}_{{ division }}_{{ period }}: 'loading' }]
+  - id: movement_box_{{ id }}
+    type: Box
+    layout:
+      contentJustify: end
+    visible:
+      _not:
+        _var:
+          name: hide_movement
+          default: false
+    blocks:
+      - id: movement_icon_{{ id }}
+        type: Icon
+        layout:
+          flex: 0 1 auto
+        style:
+          marginRight: 8
+        properties:
+          size:
+            _var:
+              name: icon_size
+              default: 14
+          name:
+            _mql_expr:
+              expr:
+                $switch:
+                  branches:
+                    - case:
+                        $gt:
+                          - ${{ index }}_{{ division }}_difference
+                          - 0
+                      then: ArrowUpOutlined
+                    - case:
+                        $lt:
+                          - ${{ index }}_{{ division }}_difference
+                          - 0
+                      then: ArrowDownOutlined
+                    - case:
+                        $eq:
+                          - ${{ index }}_{{ division }}_difference
+                          - 0
+                      then: MinusOutlined
+                  default: LoadingOutlined
+              on:
+                _get:
+                  key: '0'
+                  from:
+                    _mql_expr:
+                      $ifNull:
+                        - _request: overview_index_{{ id }}
+                        - [{}]
+          style:
+            color:
+              _mql_expr:
+                expr:
+                  $switch:
+                    branches:
+                      - case:
+                          $gt:
+                            - ${{ index }}_{{ division }}_difference
+                            - 0
+                        then: '#237804'
+                      - case:
+                          $lt:
+                            - ${{ index }}_{{ division }}_difference
+                            - 0
+                        then: '#cf1322'
+                    default: '#212121'
+                on:
+                  _get:
+                    key: '0'
+                    from:
+                      _request: overview_index_{{ id }}
+      - id: movement_text_{{ id }}
+        type: Html
+        layout:
+          flex: 0 1 auto
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                {% raw %}
+                <font style='color: {{ color }}; font-size:{{ font_size }}px' >
+                  {{ movement | abs | round(1) }}
+                </font>
+                <font style='color: {{ color }}; font-size:{{ font_size - 4 }}px' >
+                  from previous month
+                </font>
+                {% endraw %}
+              on:
+                font_size:
+                  _var:
+                    name: subtitle_font_size
+                    default: 16
+                movement:
+                  _get:
+                    key: '0.{{ index }}_{{ division }}_difference'
+                    from:
+                      _request: overview_index_{{ id }}
+                color:
+                  _mql_expr:
+                    expr:
+                      $switch:
+                        branches:
+                          - case:
+                              $gt:
+                                - ${{ index }}_{{ division }}_difference
+                                - 0
+                            then: '#1b5e20'
+                          - case:
+                              $lt:
+                                - ${{ index }}_{{ division }}_difference
+                                - 0
+                            then: '#b71c1c'
+                        default: '#212121'
+                    on:
+                      _get:
+                        key: '0'
+                        from:
+                          _request: overview_index_{{ id }}

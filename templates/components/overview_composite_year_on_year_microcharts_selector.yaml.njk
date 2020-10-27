@@ -1,0 +1,84 @@
+## -----------------
+## overview_composite_year_on_year_microcharts_selector
+## Calculate index and render month category micro chart showing current values.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   height: _number_ - height of the category chart.
+##   colors: [_string_] - list of colors to for year on year lines, latest year is last in the list.
+## ------------------
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: end
+  contentGutter: 8
+  span:
+    _var:
+      name: span
+      default: 24
+blocks:
+  - id: division_selector
+    type: Selector
+    layout:
+      size: 200
+    defaultValue: Company
+    properties:
+      title: Division
+      label:
+        inline: true
+      size: small
+      allowClear: false
+      options:
+        - Company
+        - Sales
+        - After Sales
+        - Parts
+        - Service
+  - id: charts_box
+    type: Box
+    layout:
+      contentGutter: 8
+    blocks:
+      - _ref:
+          path: templates/components/overview_csi_year_on_year_microchart.yaml.njk
+          vars:
+            id: csi_yoy_overview
+            connectionId: {{ connectionId }}
+            chart_data:
+              _mql_aggregate:
+                on:
+                  _request: csi_overview_year_on_year_csi_yoy_overview
+                pipeline:
+                  - $match:
+                      division:
+                        _state: division_selector
+            filter_field: division
+            span: 12
+            chart_height:
+              _var: chart_height
+            colors:
+              - "#85a5ff"
+              - "#2f54eb"
+              - "#030852"
+      - _ref:
+          path: templates/components/overview_nps_year_on_year_microchart.yaml.njk
+          vars:
+            id: nps_yoy_overview
+            connectionId: {{ connectionId }}
+            chart_data:
+              _mql_aggregate:
+                on:
+                  _request: nps_overview_year_on_year_nps_yoy_overview
+                pipeline:
+                  - $match:
+                      division:
+                        _state: division_selector
+            filter_field: division
+            span: 12
+            chart_height:
+              _var: chart_height
+            colors:
+              - "#ff7875"
+              - "#cf1322"
+              - "#5c0011"

@@ -1,0 +1,690 @@
+## -----------------
+## overview_nps_year_on_year_microchart_selector
+## Calculate index and render month category micro chart showing current values.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   height: _number_ - height of the category chart.
+##   colors: [_string_] - list of colors to for year on year lines, latest year is last in the list.
+## ------------------
+id: {{ id }}
+type: Box
+layout:
+  contentJustify: end
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: nps_overview_year_on_year_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $group:
+            _id: $Mnt
+            sales_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            sales_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            sales_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Sales
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            parts_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            parts_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            parts_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Parts
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            service_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            service_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            service_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $eq:
+                      - $project
+                      - Service
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+
+            after_sales_promoters:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            after_sales_detractors:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            after_sales_nps_sample:
+              $sum:
+                $cond:
+                  - $and:
+                    - $in:
+                      - $project
+                      - - Parts
+                        - Service
+                    - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+        - $addFields:
+            sales_nps:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $sales_promoters
+                            - $sales_detractors
+                        - $sales_nps_sample
+                    - 100
+            sales_percent_promoters:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $sales_promoters
+                        - $sales_nps_sample
+                    - 100
+            sales_percent_detractors:
+              $cond:
+                - $eq:
+                    - $sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $sales_detractors
+                        - $sales_nps_sample
+                    - 100
+            parts_nps:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $parts_promoters
+                            - $parts_detractors
+                        - $parts_nps_sample
+                    - 100
+            parts_percent_promoters:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $parts_promoters
+                        - $parts_nps_sample
+                    - 100
+            parts_percent_detractors:
+              $cond:
+                - $eq:
+                    - $parts_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $parts_detractors
+                        - $parts_nps_sample
+                    - 100
+            service_nps:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $service_promoters
+                            - $service_detractors
+                        - $service_nps_sample
+                    - 100
+            service_percent_promoters:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $service_promoters
+                        - $service_nps_sample
+                    - 100
+            service_percent_detractors:
+              $cond:
+                - $eq:
+                    - $service_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $service_detractors
+                        - $service_nps_sample
+                    - 100
+            after_sales_nps:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $after_sales_promoters
+                            - $after_sales_detractors
+                        - $after_sales_nps_sample
+                    - 100
+            after_sales_percent_promoters:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $after_sales_promoters
+                        - $after_sales_nps_sample
+                    - 100
+            after_sales_percent_detractors:
+              $cond:
+                - $eq:
+                    - $after_sales_nps_sample
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $after_sales_detractors
+                        - $after_sales_nps_sample
+                    - 100
+        - $project:
+            month_of_year:
+              $month: $_id
+            cutoff_year:
+              $subtract:
+                - $year:
+                    _state: end_month
+                - 2
+            year:
+              $year: $_id
+            divisions:
+              - name: Company
+                score:
+                  $sum:
+                    - $multiply:
+                        - $sales_nps
+                        - 0.5
+                    - $multiply:
+                        - $parts_nps
+                        - $cond:
+                            - $in:
+                                - null
+                                - [ $sales_nps, $service_nps ]
+                            - 0.5
+                            - 0.25
+                    - $multiply:
+                        - $service_nps
+                        - $cond:
+                            - $in:
+                                - null
+                                - [ $sales_nps, $parts_nps ]
+                            - 0.5
+                            - 0.25
+              - name: Sales
+                score: $sales_nps
+              - name: After Sales
+                score: $after_sales_nps
+              - name: Parts
+                score: $parts_nps
+              - name: Service
+                score: $service_nps
+        - $match:
+            $expr:
+              $gte:
+                - $year
+                - $cutoff_year
+        - $unwind:
+            path: $divisions
+        - $sort:
+            year: -1
+        - $group:
+            _id: 
+              month_of_year: $month_of_year
+              division: $divisions.name
+            index:
+              $push:
+                k:
+                  $toString: $year
+                v:
+                  $ifNull:
+                    - $divisions.score
+                    - null
+        - $sort:
+            _id.month_of_year: 1
+        - $addFields:
+            division: $_id.division
+            radius:
+              $cond:
+                - $eq:
+                    - $_id.month_of_year
+                    - $month:
+                        _state: end_month
+                - 8
+                - 2
+            opacity:
+              $cond:
+                - $eq:
+                    - $_id.month_of_year
+                    - $month:
+                        _state: end_month
+                - 1
+                - 0
+            month:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 1
+                    then: Jan
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 2
+                    then: Feb
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 3
+                    then: Mar
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 4
+                    then: Apr
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 5
+                    then: May
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 6
+                    then: Jun
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 7
+                    then: Jul
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 8
+                    then: Aug
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 9
+                    then: Sep
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 10
+                    then: Oct
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 11
+                    then: Nov
+                  - case:
+                      $eq:
+                        - $_id.month_of_year
+                        - 12
+                    then: Dec
+                default: ''
+        - $replaceRoot:
+            newRoot:
+              $mergeObjects:
+                - month: $month
+                  division: $division
+                  radius: $radius
+                  opacity: $opacity
+                  all: $index
+                - $arrayToObject: $index
+        - $addFields:
+            all:
+              $reduce:
+                input: $all
+                initialValue: ""
+                in:
+                  $cond:
+                    - $eq:
+                        - $$value
+                        - ""
+                    - $concat:
+                        - $$this.k
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.v
+                              - 1
+                        - "[/]"
+                    - $concat:
+                        - $$value
+                        - "\n"
+                        - $$this.k
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.v
+                              - 1
+                        - "[/]"
+blocks:
+  - id: csi_division_selector
+    type: Selector
+    field: division_selector
+    layout:
+      size: 200
+    defaultValue: Company
+    properties:
+      title: Division
+      label:
+        inline: true
+      size: small
+      allowClear: false
+      options:
+        - Company
+        - Sales
+        - After Sales
+        - Parts
+        - Service
+  - id: {{ id }}_chart
+    type: AmCharts4XY
+    properties:
+      height:
+        _var: chart_height
+      paddingTop: 20
+      paddingRight: 0
+      paddingBottom: 0
+      paddingLeft: 0
+      numberFormatter:
+        numberFormat: "#.#"
+      colors:
+        list:
+          _var: colors
+      data:
+        _mql_aggregate:
+          on:
+            _request: nps_overview_year_on_year_{{ id }}
+          pipeline:
+            - $match:
+                division:
+                  _state: division_selector
+      legend:
+        type: Legend
+        position: bottom
+        contentAlign: right
+        fontSize: 10
+        maxWidth: 100
+        valueText: ''
+        itemContainers: 
+          width: 40
+          paddingTop: 0
+          paddingBottom: 0
+          paddingLeft: -15
+          paddingRight: 0
+      xAxes:
+        - type: CategoryAxis
+          id: category
+          dataFields:
+            category: month
+          title:
+            disabled: true
+          renderer:
+            grid:
+              disabled: true
+            labels:
+              disabled: true
+
+      yAxes:
+        - type: ValueAxis
+          # min: 0
+          # max: 100
+          title:
+            disabled: true
+          renderer:
+            # grid:
+            #   disabled: true
+            # labels:
+            #   disabled: true
+          cursorTooltipEnabled: false
+      cursor:
+        type: XYCursor
+        xAxis: category
+        fullWidthLineX: true
+        lineX:
+          fill: #607d8b
+          fillOpacity: 0.1
+        lineY:
+          disabled: true
+
+      series:
+        _mql_aggregate:
+          on:
+            _request: nps_overview_year_on_year_{{ id }}
+          pipeline:
+            - $match:
+                division:
+                  _state: division_selector
+            - $project:
+                obj:
+                  $objectToArray: $$ROOT
+            - $unwind:
+                path: $obj
+            - $group:
+                _id: $obj.k
+                year: 
+                  $first:
+                    $obj.k
+                sum:
+                  $sum: $obj.v
+                all:
+                  $first: $all
+            - $match:
+                sum:
+                  $ne: 0
+            - $match:
+                _id:
+                  $ne: radius
+            - $match:
+                _id:
+                  $ne: opacity
+            - $match:
+                _id:
+                  $ne: division
+            - $match:
+                _id:
+                  $ne: strokeWidth
+            - $sort:
+                _id: 1
+            - $project:
+                _id: 0
+                type: LineSeries
+                name: $_id
+                connect: 
+                  $literal: false
+                # fillOpacity: 
+                #   $literal: 0.3
+                strokeWidth: 
+                  $literal: 4
+                tensionX: 
+                  $literal: 0.9
+                tensionY: 
+                  $literal: 0.9
+                legendSettings:
+                  itemValueText: ''
+                dataFields:
+                  valueY: $_id
+                  categoryX: month
+                  all: all
+                bullets:
+                  $cond:
+                    - $eq:
+                        - $_id
+                        - $toString:
+                            _state: max_financial_year
+                    - $literal:
+                        - type: LabelBullet
+                          label:
+                            text: "{valueY}"
+                            dy: -10
+                            fontSize: 12
+                            opacity: 0
+                            # propertyFields:
+                            #   opacity: opacity
+                        - type: CircleBullet
+                          tooltipText: "{all}"
+                          strokeWidth: 8
+                          scale: 0.5
+                          circle: 
+                            opacity: 1
+                            radius: 0
+                            propertyFields:
+                              radius: radius 
+                          states:
+                            hover:
+                              properties:
+                                scale: 1.2
+                    - $literal:
+                        - type: LabelBullet
+                          label:
+                            text: "{valueY}"
+                            dy: -10
+                            fontSize: 12
+                            opacity: 0
+                            propertyFields:
+                              opacity: opacity

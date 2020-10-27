@@ -1,0 +1,233 @@
+## -----------------
+## 
+## sample_sizes
+## Calculate sample size for different line of businesses.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   span: _integer_ - Span of the component. Default 24.
+##   height: _number_ - height of the timeline chart.
+##   colors: [_string_] - colors of the timeline chart.
+## ------------------
+
+id: {{ id }}
+type: AmCharts4XY
+layout:
+  contentJustify: center
+  span:
+    _var:
+      name: span
+      default: 24
+requests:
+  - id: samples_{{ id }}
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $Mnt
+                    - $dateFromParts:
+                        year:
+                          $year:
+                            _state: end_month
+                        month: 
+                          $subtract:
+                            - $month:
+                                _state: end_month
+                            - _var:
+                                name: months_back
+                                default: 23
+                - $lte:
+                    - $Mnt
+                    - _state: end_month
+        - $group:
+            _id: $Mnt
+            total:
+              $sum: 1
+            sales:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Sales
+                  - 1
+                  - 0
+            parts:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Parts
+                  - 1
+                  - 0
+            service:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $project
+                    - Service
+                  - 1
+                  - 0
+        - $sort:
+            _id: -1
+        - $project:
+            _id: 0
+            month: $_id
+            total: 1
+            sales: 1
+            parts: 1
+            service: 1
+            all:
+              $reduce:
+                input:
+                  - name: Total
+                    sample: $total
+                  - name: Sales
+                    sample: $sales
+                  - name: Parts
+                    sample: $parts
+                  - name: Service
+                    sample: $service
+                initialValue: ""
+                in:
+                  $cond:
+                    - $eq:
+                        - $$value
+                        - ""
+                    - $concat:
+                        - $$this.name
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.sample
+                              - 1
+                        - "[/]"
+                    - $concat:
+                        - $$value
+                        - "\n"
+                        - $$this.name
+                        - ": [bold]"
+                        - $toString: 
+                            $round:
+                              - $$this.sample
+                              - 1
+                        - "[/]"
+properties:
+  height: 
+    _var: height
+  paddingTop: 20
+  paddingRight: 0
+  paddingBottom: 0
+  paddingLeft: 0
+  numberFormatter:
+    numberFormat: "#.#"
+  colors:
+    list:
+      _var: colors
+  data:
+    _request: samples_{{ id }}
+  legend:
+    type: Legend
+    position: bottom
+    contentAlign: right
+    fontSize: 12
+    itemContainers: 
+      # width: 40
+      # paddingTop: 0
+      paddingBottom: 0
+      paddingLeft: -15
+      paddingRight: 0
+  dateFormatter: 
+    dateFormat: MMM yyyy
+  xAxes:
+    - type: DateAxis
+      id: category
+      baseInterval:
+        timeUnit: month
+        count: 1
+      dataFields:
+        category: month
+      title:
+        disabled: true
+      renderer:
+        grid:
+          disabled: true
+        labels:
+          disabled: true
+  yAxes:
+    - type: ValueAxis
+      min: 0
+      cursorTooltipEnabled: false
+      title:
+        disabled: true
+      # renderer:
+      #   grid:
+      #     disabled: true
+      #   labels:
+      #     disabled: true
+  cursor:
+    type: XYCursor
+    xAxis: category
+    fullWidthLineX: true
+    lineX:
+      fill: #607d8b
+      fillOpacity: 0.1
+    lineY:
+      disabled: true
+
+  series:
+    - type: LineSeries
+      name: Service
+      connect: false
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: service
+        dateX: month
+      strokeWidth: 4
+    - type: LineSeries
+      name: Parts
+      connect: false
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: parts
+        dateX: month
+      strokeWidth: 4
+    - type: LineSeries
+      name: Sales
+      connect: false
+      tensionX: 0.9
+      tensionY: 0.9
+      legendSettings:
+        itemValueText: '{valueY}'
+      dataFields:
+        valueY: sales
+        dateX: month
+      strokeWidth: 4
+      bullets:
+        - type: CircleBullet
+          tooltipText: "{all}"
+          strokeWidth: 8
+          scale: 0.5
+          circle: 
+            radius: 0
+          dateFormatter: 
+            dateFormat: MMM yyyy
+          states:
+            hover:
+              properties:
+                scale: 1.2

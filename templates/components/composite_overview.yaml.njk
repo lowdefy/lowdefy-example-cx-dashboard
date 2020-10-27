@@ -1,0 +1,142 @@
+## -----------------
+## 
+## composite_overview
+## Calculate and show index average for current month, 3 months, 6 months and 12 months along with trend micro timeline chart showing max, min and latest values.
+## 
+## vars:
+##   id: _string_ - id for the component.
+##   connectionId: _string_ - MongoDB collection connection id.
+##   division: _integer_ (REQUIRED) - which division to show. [company,sales,after_sales,parts,service]_[company,sales,after_sales,parts,service]
+##   current_csi_title: _integer_ - the title of the current month CSI statistic.
+##   current_nps_title: _integer_ - the title of the current month NPS statistic.
+##   current_title_size: _integer_ - the font size of the current month title. Default: 16.
+##   current_score_size: _integer_ - the font size of the current month score. Default: 40.
+##   fytd_title_size: _integer_ - the font size of the fytd title. Default: 14.
+##   fytd_score_size: _integer_ - the font size of the fytd score. Default: 30.
+##   chart_height: _number_ - height of the timeline chart. Default 90.
+##   color: _string_ - color of the csi trend chart.
+## ------------------
+
+id: {{ id }}
+type: Box
+layout:
+  contentAlign: middle
+  contentGutter: 8
+blocks:
+  - id: csi_box
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - _ref:
+          path: templates/components/overview_statistic.yaml.njk
+          vars:
+            id: {{ id }}_current_csi
+            connectionId: {{ connectionId }}
+            index: csi
+            division: {{ division }}
+            period: current
+            index_name:
+              _var: current_csi_title
+            span: 7
+            title_font_size:
+              _var:
+                name: current_title_size
+                default: 16
+            index_font_size:
+              _var:
+                name: current_score_size
+                default: 40
+            subtitle_font_size: 14
+            icon_size: 12
+      - _ref:
+          path: templates/components/overview_statistic.yaml.njk
+          vars:
+            id: {{ id }}_fytd_csi
+            connectionId: {{ connectionId }}
+            index: csi
+            division: {{ division }}
+            period: fytd
+            index_name: FYtD
+            span: 4
+            title_font_size:
+              _var:
+                name: fytd_title_size
+                default: 14
+            index_font_size:
+              _var:
+                name: fytd_score_size
+                default: 30
+            hide_movement: true
+      - _ref:
+          path: templates/components/overview_csi_trend_microchart.yaml.njk
+          vars:
+            id: {{ id }}_csi_trend
+            connectionId: {{ connectionId }}
+            division: {{ division }}
+            month_average: 3
+            height:
+              _var:
+                name: chart_height
+                default: 90
+            color:
+              _var: color
+            span: 13
+
+  - id: nps_box
+    type: Box
+    layout:
+      span: 12
+    blocks:
+      - _ref:
+          path: templates/components/overview_statistic.yaml.njk
+          vars:
+            id: {{ id }}_current_nps
+            connectionId: {{ connectionId }}
+            index: nps
+            division: {{ division }}
+            period: current
+            index_name: 
+              _var: current_nps_title
+            span: 7
+            title_font_size:
+              _var:
+                name: current_title_size
+                default: 16
+            index_font_size:
+              _var:
+                name: current_score_size
+                default: 40
+            subtitle_font_size: 14
+            icon_size: 12
+      - _ref:
+          path: templates/components/overview_statistic.yaml.njk
+          vars:
+            id: {{ id }}_fytd_nps
+            connectionId: {{ connectionId }}
+            index: nps
+            division: {{ division }}
+            period: fytd
+            index_name: FYtD
+            span: 4
+            title_font_size:
+              _var:
+                name: fytd_title_size
+                default: 14
+            index_font_size:
+              _var:
+                name: fytd_score_size
+                default: 30
+            hide_movement: true
+      - _ref:
+          path: templates/components/overview_nps_trend_microchart.yaml.njk
+          vars:
+            id: {{ id }}_nps_microchart
+            connectionId: {{ connectionId }}
+            division: {{ division }}
+            month_average: 3
+            height:
+              _var:
+                name: chart_height
+                default: 90
+            span: 13

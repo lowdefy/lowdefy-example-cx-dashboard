@@ -1,7 +1,12 @@
 id: default
 links:
-  - id: dashboard
+  - id: overview
     type: MenuLink
-    pageId: dashboard
+    pageId: overview
     properties:
-      title: Dashboard
+      title: Overview
+  - id: project
+    type: MenuLink
+    pageId: project
+    properties:
+      title: Project
