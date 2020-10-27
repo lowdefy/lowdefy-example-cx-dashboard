@@ -3,8 +3,6 @@ type: PageHeaderMenu
 public: true
 properties:
   title: {{ dashboard_name }}
-  menu:
-    links: []
 layout:
   contentGutter: 8
 requests:
@@ -300,15 +298,15 @@ blocks:
         properties:
           offsetTop: 16
         blocks:
-          - id: data_button
+          - id: responses_button
             type: Button
             layout:
               grow: 0
               shrink: 1
               size: auto
             properties:
-              title: Data
-              icon: TableOutlined
+              title: Responses
+              icon: SoundOutlined
               hideActionLoading: true
               shape: round
               type: default

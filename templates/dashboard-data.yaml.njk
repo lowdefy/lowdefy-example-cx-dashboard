@@ -1,280 +1,383 @@
 id: {{ page_id }}-data
 type: PageHeaderMenu
-public: true
 properties:
   title: {{ dashboard_name }}
-  menu:
-    links: []
+layout:
+  contentGutter: 8
 actions:
   onInit:
-    - id: set_cati_projects
+    - id: set_projects
       type: SetState
       params:
-        month_from:
-          _date: 2020-06-01
-        month_to:
-          _date: 2020-09-01
+        projects:
+          _var: projects
         pagination:
           pageSize: 10
           skip: 0
+    - id: fetch_init
+      type: Fetch
+      params: init
+    - id: set_init
+      type: SetState
+      params:
+        _get:
+          key: '0'
+          from:
+            _request: init
+    - id: fetch_interviews
+      type: Fetch
+      params:
+        - totals
+        - interviews
+    - id: set_interviews
+      type: SetState
+      params:
         interviews:
-          - _id: 0
-            Mnt: 
-              _date: '2020-09-01T00:00:00.000+0000'
-            phone: '0145678763'
-            account_number: '876567'
-            agent: James Bond
-            branch: Stamford
-            company: Company B
-            interaction_date: 
-              _date: '2020-09-02T00:00:00.000+0000'
-            email_address: adam@borris.com
-            purchase_order_number: HJSD 987 HKJH
-            respondent: Adam Borris
-            serial_number: 78HJGSDF-DS
-            transaction_number: 879HJH980
-            transaction_order_number: '6978FDSFD'
-            csi: 70
-            promoter: Detractor
-            promoter_color: '#fb8c00'
-            elements_verbatim:
-              - name: Time to Order
-                score: 5
-                verbatim: It took us over two hours. I think that it should take an hour at most.
-              - name: Quotation Accuracy
-                score: 5
-                verbatim: Their prices always keep increasing.
-              - name: Ease of Business
-                score: 5
-                verbatim: The transactions are more and more difficult because the company keep changing our tax numbers. They should keep our records with a specific tax number to make the identification process much easier.
-              - name: Recommendation
-                score: 3
-                verbatim: The Company do not  stick with the deadlines. The last time I went there, they had trouble giving me the parts I was looking for, while their system showed that they had the stock.
-              - name: Additional Information
-                score: null
-                verbatim: The Company should hire competent people who are able to satisfy their customers.
+          _request: interviews
+requests:
+  - id: init
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $group:
+            _id: $Mnt
+            total:
+              $sum: 1
+            financial_year:
+              $first: $financial_year
+{% for item in filter_fields %}
+            {{ item.field }}_list:
+              $addToSet: 
+                $cond:
+                  - $eq:
+                      - $financial_year
+                      - $year:
+                          _date: now
+                  - ${{ item.field }}
+                  - null
+{% endfor %}
+        - $sort:
+            _id: -1
+        - $group:
+            _id: 0
+            total: 
+              $sum: $total
+            max_financial_year:
+              $max: $financial_year
+            months:
+              $push:
+                value: $_id
+                label:
+                  $dateToString:
+                    date: $_id
+                    format: '%Y-%m'
+{% for item in filter_fields %}
+            {{ item.field }}_list:
+              $addToSet: ${{ item.field }}_list
+{% endfor %}
+        - $project:
+            _id: 0
+        # - $addFields:
+            month_to:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            month_from:
+              $arrayElemAt:
+                - $months.value
+                - 2
+{% for item in filter_fields %}
+            {{ item.field }}_list:
+              $filter:
+                input:
+                  $reduce:
+                    input: ${{ item.field }}_list
+                    initialValue: []
+                    in:
+                      $setUnion:
+                        - $$value
+                        - $$this
+                cond:
+                  $ne:
+                    - $$this
+                    - null
+{% endfor %}
+
+  - id: interviews
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - _if:
+            test:
+              _eq:
+                - _state: search_input
+                - null
+            then:
+              $match: {}
+            else:
+                $match:
+                  $text:
+                    $search:
+                      _nunjucks: "{% raw %}\"{{ search_input }}\"{% endraw %}"
+        - $addFields:
+            score:
+              _if:
+                test:
+                  _eq:
+                    - _state: search_input
+                    - null
+                then:
+                  null
+                else:
+                  $meta: textScore
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $financial_year
+                    - $subtract:
+                        - _state: max_financial_year
+                        - 3
+{% for item in filter_fields %}
+                - $cond:
+                    - $eq:
+                        - _state: {{ item.field }}_selector
+                        - null
+                    - true
+                    - $eq:
+                        - ${{ item.field }}
+                        - _state: {{ item.field }}_selector
+{% endfor %}
+                - $cond:
+                    - $eq:
+                        - _state: month_from
+                        - null
+                    - true
+                    - $gte:
+                        - $Mnt
+                        - _state: month_from
+                - $cond:
+                    - $eq:
+                        - _state: month_to
+                        - null
+                    - true
+                    - $lte:
+                        - $Mnt
+                        - _state: month_to
+        - $addFields:
+            score:
+              _if:
+                test:
+                  _eq:
+                    - _state: search_input
+                    - null
+                then:
+                  null
+                else:
+                  $meta: textScore
+            promoter_color:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - $promoter
+                        - Promoter
+                    then: '#237804'
+                  - case:
+                      $eq:
+                        - $promoter
+                        - Detractor
+                    then: '#cf1322'
+                default: '#595959'
             elements:
-              - name: Time to Order
-                score: 5
-                verbatim: It took us over two hours. I think that it should take an hour at most.
-              - name: Communication
-                score: 10
-                verbatim: null
-              - name: Tech Info
-                score: 7
-                verbatim: null
-              - name: Quotation Accuracy
-                score: 5
-                verbatim: Their prices always keep increasing.
-              - name: Follow up
-                score: 9
-                verbatim: null
-              - name: Parts availability
-                score: 9
-                verbatim: null
-              - name: Order completion time
-                score: 7
-                verbatim: null
-              - name: Ease of Business
-                score: 5
-                verbatim: The transactions are more and more difficult because the company keep changing our tax numbers. They should keep our records with a specific tax number to make the identification process much easier.
-              - name: Recommendation
-                score: 3
-                verbatim: The Company do not  stick with the deadlines. The last time I went there, they had trouble giving me the parts I was looking for, while their system showed that they had the stock.
-              - name: Repurchase likelihood
-                score: 8
-                verbatim: null
-              - name: Overall experience
-                score: 9
-                verbatim: null
-              - name: Additional Information
-                score: null
-                verbatim: The Company should hire competent people who are able to satisfy their customers.
-          - _id: 1
-            Mnt:
-              _date: 2020-09-01
-            respondent: Jack Jon
-            tel: 09876534567
-            company: Company Ltd
-            transaction_date:
-              _date: 2020-08-11
-            transaction_number: HG89833-9898
-            po_number: DF90F-SDF9
-            agent: Agent X
-            branch: Scranton
-            promoter: Promoter
-            promoter_color: '#43a047'
-            csi: 83
-            elements_verbatim: []
+{% for item in elements %}
+              - name: {{ item.name }}
+                score: { $ifNull: [ ${{ item.score }}, null ] }
+                comment: { $ifNull: [ ${{ item.comment }}, null ] }
+{% endfor %}
+        - $addFields:
+            phone: $TELNUM
+            interaction_date: $date
+            elements_comment:
+              $filter:
+                input: $elements
+                cond:
+                  $and:
+                    - $ne:
+                        - $$this.comment
+                        - null
+                    - $cond:
+                        - $eq:
+                            - _state: elements_selector
+                            - []
+                        - true
+                        - $in:
+                            - $$this.name
+                            - _state: elements_selector
+        - $match:
+            $expr:
+              $cond:
+                - $eq:
+                    - _state: elements_selector
+                    - []
+                - true
+                - $gt:
+                    - $size:
+                        $setIntersection:
+                          - _state: elements_selector
+                          - $elements_comment.name
+                    - 0
+        - $sort:
+            interview_date: -1
+            score: 1
+        - $skip:
+            _state: pagination.skip
+        - $limit:
+            _state: pagination.pageSize
+  - id: totals
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - _if:
+            test:
+              _eq:
+                - _state: search_input
+                - null
+            then:
+              $match: {}
+            else:
+                $match:
+                  $text:
+                    $search:
+                      _nunjucks: "{% raw %}\"{{ search_input }}\"{% endraw %}"
+        - $match:
+            published: true
+            project:
+              $in:
+                _state: projects
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $financial_year
+                    - $subtract:
+                        - _state: max_financial_year
+                        - 3
+{% for item in filter_fields %}
+                - $cond:
+                    - $eq:
+                        - _state: {{ item.field }}_selector
+                        - null
+                    - true
+                    - $eq:
+                        - ${{ item.field }}
+                        - _state: {{ item.field }}_selector
+{% endfor %}
+                - $cond:
+                    - $eq:
+                        - _state: month_from
+                        - null
+                    - true
+                    - $gte:
+                        - $Mnt
+                        - _state: month_from
+                - $cond:
+                    - $eq:
+                        - _state: month_to
+                        - null
+                    - true
+                    - $lte:
+                        - $Mnt
+                        - _state: month_to
+        - $project:
             elements:
-              - name: Time to Order
-                score: 9
-                verbatim: null
-              - name: Communication
-                score: 9
-                verbatim: null
-              - name: Tech Info
-                score: 8
-                verbatim: null
-          - _id: 2
-            Mnt:
-              _date: 2020-09-01
-            respondent: Abe Petersson
-            branch: Scranton
-            promoter: Indifferent
-            promoter_color: '#546e7a'
-            csi: 75
-            elements_verbatim:
-              - name: Communication
-                score: 6
-                verbatim: Communication was not good. I expected much better.
-            elements:
-              - name: Time to Order
-                score: 9
-                verbatim: null
-              - name: Communication
-                score: 6
-                verbatim: Communication was not good. I expected much better.
-              - name: Tech Info
-                score: 7
-                verbatim: null
-          - _id: 3
-            Mnt:
-              _date: 2020-09-01
-            respondent: Chom Borderrss
-            branch: Stamford
-            promoter: Detractor
-            promoter_color: '#fb8c00'
-            csi: 62
-            elements_verbatim:
-              - name: Time to Order
-                score: 6
-                verbatim: The order took ages to process
-              - name: Tech Info
-                score: 5
-                verbatim: Techie was useless
-            elements:
-              - name: Time to Order
-                score: 6
-                verbatim: The order took ages to process
-              - name: Communication
-                score: 7
-                verbatim: null
-              - name: Tech Info
-                score: 5
-                verbatim: Techie was useless
-          - _id: 4
-            Mnt: 
-              _date: '2020-08-01T00:00:00.000+0000'
-            phone: '0567656734'
-            account_number: '970002'
-            agent: James Bond
-            branch: Scranton
-            company: Company F
-            interaction_date: 
-              _date: '2020-07-02T00:00:00.000+0000'
-            email_address: peter@smith.com
-            purchase_order_number: HJKSD 988DF
-            respondent: Peter Smith
-            serial_number: HJHK67-DS
-            transaction_number: 4567dsf
-            transaction_order_number: 'JHHJK786'
-            csi: 44
-            promoter: Detractor
-            promoter_color: '#fb8c00'
-            elements_verbatim:
-              - name: Time to Order
-                score: 4
-                verbatim: WE PLACE ORDERS IF NEED BE BUT THE RECURRENT PROBLEM IS ALWAYS STOCK AVAILABILITY.
-              - name: Communication
-                score: 6
-                verbatim: THE PARTS PERSON SHOULD BE A LITTLE FASTER. SOMETIMES THEY TAKE TWO DAYS OR MORE TO RESPOND TO EMAILS.
-              - name: Tech Info
-                score: null
-                verbatim: null
-              - name: Quotation Accuracy
-                score: 5
-                verbatim: THE COMPANY ARE A BIT TOO EXPENSIVE WHEN THEY HAVE TO IMPORT PARTS.
-              - name: Follow up
-                score: 5
-                verbatim: WHEN IT IS URGENT WE WOULD LIKE THE PARTS PERSON TO GIVE US A FEEDBACK DURING THE COURSE OF THE DAY.
-              - name: Parts availability
-                score: 4
-                verbatim: LAST TIME FOR INSTANCE THEY DID NOT HAVE INJECTOR WIRES FOR ONE ENGINE IN STOCK. IT TOOK THEM TWENTY-ONE DAYS TO GET THEM. WE THINK THAT IT SHOULD NOT TAKE THEM MORE THAN A WEEK.
-              - name: Order completion time
-                score: 3
-                verbatim: IT DEPENDS ON PARTS AVAILABILITY. SOME PARTS ARE AVAILABLE AND OTHERS ARE NOT. WE ALWAYS HAVE TO WAIT TWO OR THREE WEEKS.
-              - name: Ease of Business
-                score: 3
-                verbatim: WE DO NOT HAVE A CREDIT ACCOUNT WITH THE COMPANY. WE ALWAYS HAVE TO GO THROUGH THE BANK AND THAT MAKES SLOWS DOWN THE WHOLE PROCESS. TO MAKE THINGS EASIER, THE COMPANY SHOULD HELP US TO HAVE A CREDIT ACCOUNT WITH THEM.
-              - name: Recommendation
-                score: 3
-                verbatim: THE COMPANY HAVE A SERIOUS PROBLEM WITH REGARDS TO STOCK AVAILABILITY. THIS IS GOING TO BE A PROBLEM FOR ANYONE WE CAN RECOMMEND THE COMPANY TO.
-              - name: Repurchase likelihood
-                score: 6
-                verbatim: WE ALWAYS NEED AND WILL ALWAYS NEED THE COMPANY SERVICES BUT IT WILL ALWAYS BE COMPLICATED AS LONG AS WE DON'T HAVE A CREDIT ACCOUNT WITH THEM.
-              - name: Overall experience
-                score: 5
-                verbatim: THE COMPANY SHOULD IMPROVE ON THEIR STOCK AVAILABILITY.
-              - name: Additional Information
-                score: null
-                verbatim: THE COMPANY DEVRAIT AVOIR DES COLLABORATIONS AVEC NOUSQUI SOMMES SUR SITE POUR SUBVENIR A NOS BESOINS ET DISPONIBILISER LES PIECES. ET AUSSI OUVRIR UN COMPTE CREDIT AVEC NOUS POUR RAPIDITER LES OPERATIONS.
-            elements:
-              - name: Time to Order
-                score: 4
-                verbatim: WE PLACE ORDERS IF NEED BE BUT THE RECURRENT PROBLEM IS ALWAYS STOCK AVAILABILITY.
-              - name: Communication
-                score: 6
-                verbatim: THE PARTS PERSON SHOULD BE A LITTLE FASTER. SOMETIMES THEY TAKE TWO DAYS OR MORE TO RESPOND TO EMAILS.
-              - name: Tech Info
-                score: null
-                verbatim: null
-              - name: Quotation Accuracy
-                score: 5
-                verbatim: THE COMPANY ARE A BIT TOO EXPENSIVE WHEN THEY HAVE TO IMPORT PARTS.
-              - name: Follow up
-                score: 5
-                verbatim: WHEN IT IS URGENT WE WOULD LIKE THE PARTS PERSON TO GIVE US A FEEDBACK DURING THE COURSE OF THE DAY.
-              - name: Parts availability
-                score: 4
-                verbatim: LAST TIME FOR INSTANCE THEY DID NOT HAVE INJECTOR WIRES FOR ONE ENGINE IN STOCK. IT TOOK THEM TWENTY-ONE DAYS TO GET THEM. WE THINK THAT IT SHOULD NOT TAKE THEM MORE THAN A WEEK.
-              - name: Order completion time
-                score: 3
-                verbatim: IT DEPENDS ON PARTS AVAILABILITY. SOME PARTS ARE AVAILABLE AND OTHERS ARE NOT. WE ALWAYS HAVE TO WAIT TWO OR THREE WEEKS.
-              - name: Ease of Business
-                score: 3
-                verbatim: WE DO NOT HAVE A CREDIT ACCOUNT WITH THE COMPANY. WE ALWAYS HAVE TO GO THROUGH THE BANK AND THAT MAKES SLOWS DOWN THE WHOLE PROCESS. TO MAKE THINGS EASIER, THE COMPANY SHOULD HELP US TO HAVE A CREDIT ACCOUNT WITH THEM.
-              - name: Recommendation
-                score: 3
-                verbatim: THE COMPANY HAVE A SERIOUS PROBLEM WITH REGARDS TO STOCK AVAILABILITY. THIS IS GOING TO BE A PROBLEM FOR ANYONE WE CAN RECOMMEND THE COMPANY TO.
-              - name: Repurchase likelihood
-                score: 6
-                verbatim: WE ALWAYS NEED AND WILL ALWAYS NEED THE COMPANY SERVICES BUT IT WILL ALWAYS BE COMPLICATED AS LONG AS WE DON'T HAVE A CREDIT ACCOUNT WITH THEM.
-              - name: Overall experience
-                score: 5
-                verbatim: THE COMPANY SHOULD IMPROVE ON THEIR STOCK AVAILABILITY.
-              - name: Additional Information
-                score: null
-                verbatim: THE COMPANY DEVRAIT AVOIR DES COLLABORATIONS AVEC NOUSQUI SOMMES SUR SITE POUR SUBVENIR A NOS BESOINS ET DISPONIBILISER LES PIECES. ET AUSSI OUVRIR UN COMPTE CREDIT AVEC NOUS POUR RAPIDITER LES OPERATIONS.
-    # - id: fetch_init
-    #   type: Fetch
-    #   params: init
-    # - id: set_init
-    #   type: SetState
-    #   params:
-    #     _get:
-    #       key: '0'
-    #       from:
-    #         _request: init
+{% for item in elements %}
+              - name: {{ item.name }}
+                score: { $ifNull: [ ${{ item.score }}, null ] }
+                comment: { $ifNull: [ ${{ item.comment }}, null ] }
+{% endfor %}
+        - $project:
+            elements_comment:
+              $filter:
+                input: $elements
+                cond:
+                  $and:
+                    - $ne:
+                        - $$this.comment
+                        - null
+                    - $cond:
+                        - $eq:
+                            - _state: elements_selector
+                            - []
+                        - true
+                        - $in:
+                            - $$this.name
+                            - _state: elements_selector
+        - $match:
+            $expr:
+              $cond:
+                - $eq:
+                    - _state: elements_selector
+                    - []
+                - true
+                - $gt:
+                    - $size:
+                        $setIntersection:
+                          - _state: elements_selector
+                          - $elements_comment.name
+                    - 0
+        - $group:
+            _id: 0
+            total:
+              $sum: 1
 blocks:
   - id: interview_details_modal
     type: Modal
+    layout:
+      contentGutter: 16
     properties:
       title: Interview Details
       footer: false
       width: 1000px
     blocks:
-      - id: details_text
+      - id: details_respondent
+        type: Markdown
+        layout:
+          span: 12
+        properties:
+          renderHtml: true
+          content:
+            _var: respondent_details_modal
+      - id: details_scores
+        type: Markdown
+        layout:
+          span: 12
+        properties:
+          renderHtml: true
+          content:
+            _nunjucks:
+              template: |
+                {% raw %}
+                #### Scores
+                NPS Status: <font style='color: {{ promoter_color }};' ><b>{{ promoter }}</b></font><br/>
+                CSI: {% if csi < 70 %} <font style='color: #cf1322;' ><b>{{ csi | round(1) }}</b></font> {% elif csi >= 90 %}<font style='color: #237804;' ><b>{{ csi | round(1) }}</b></font> {% else %} <b>{{ csi | round(1) }}</b> {% endif %} <br/>
+                {% endraw %}
+              on:
+                _state: selected
+      - id: details_elements
         type: Markdown
         properties:
           renderHtml: true
@@ -282,21 +385,11 @@ blocks:
             _nunjucks:
               template: |
                 {% raw %}
-                #### Respondent Details
-                <b>Name:</b> {{ respondent }} <br/>
-                <b>Contact:</b> {{ phone }} <br/>
-                <b>Company:</b> {{ company }} <br/>
-                <b>Date:</b> {{ interaction_date | date("YYYY-MM-DD") }} <br/>
-                <b>Transaction Number:</b> {{ transaction_number }} <br/>
-                <b>Serial Number:</b> {{ serial_number }} <br/>
-                <b>Agent:</b> {{ agent }} <br/>
-                <b>Branch:</b> {{ branch }}
-
                 #### Interview Details
                 | Element | Score | Comment |
                 |---------|-------|---------|
                 {% for item in elements -%}
-                | {{ item.name }} | {% if item.score < 7 %} <div style='color: #cf1322;' ><b> {{ item.score }} </b></div> {% elif item.score >= 9 %} <div style='color: #237804;' ><b> {{ item.score }} </b></div> {% else %} {{ item.score }} {% endif %}  | {{ item.verbatim }} |
+                | {{ item.name }} | {% if item.score < 7 %} <div style='color: #cf1322;' ><b> {{ item.score }} </b></div> {% elif item.score >= 9 %} <div style='color: #237804;' ><b> {{ item.score }} </b></div> {% else %} {{ item.score }} {% endif %}  | {{ item.comment }} |
                 {% endfor -%}
                 {% endraw %}
               on:
@@ -318,86 +411,94 @@ blocks:
           placeholder: Search
           label:
             disabled: true
-        # actions:
-        #   onPressEnter:
-        #     - id: reset_selected
-        #       type: SetState
-        #       params:
-        #         selected: {}
-        #     - id: fetch
-        #       type: Fetch
-        #       params:
-        #         - fetch_interviewss
-        #     - id: set_fetched_interviewss
-        #       type: SetState
-        #       params:
-        #         interviews:
-        #           _request: fetch_interviewss
+        actions:
+          onPressEnter:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: set_interviews
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
       - id: search_button
         type: Button
         layout:
           flex: 1 1 auto
         properties:
           title: Search
-          hideTitle: true
+          # hideTitle: true
           icon: SearchOutlined
+        actions:
+          onClick:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: set_interviews
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
+      - id: clear_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Reset
+          # hideTitle: true
+          icon: ReloadOutlined
           type: default
-        # actions:
-        #   onClick:
-        #     - id: reset_selected
-        #       type: SetState
-        #       params:
-        #         selected: {}
-        #     - id: fetch
-        #       type: Fetch
-        #       params:
-        #         - fetch_interviewss
-        #     - id: set_fetched_interviewss
-        #       type: SetState
-        #       params:
-        #         interviews:
-        #           _request: fetch_interviewss
+        actions:
+          onClick:
+            - id: reset
+              type: Reset
   - id: search_tags_box
     type: Box
     layout:
       flex: 1 1 auto
       contentGutter: 8
     blocks:
-      - id: agent_selector
+{% for item in filter_fields %}
+      - id: {{ item.field }}_selector
         type: Selector
         layout:
           flex: 1 1 auto
         properties:
           label:
             disabled: true
-          placeholder: Agent
+          placeholder: {{ item.name }}
           options:
-            - Agent X
-            - James Bond
-      - id: branch_selector
-        type: Selector
-        layout:
-          flex: 1 1 auto
-        properties:
-          label:
-            disabled: true
-          placeholder: Branch
-          options:
-            - Scranton
-            - Stamford
-      - id: region_selector
-        type: Selector
-        layout:
-          flex: 1 1 auto
-        properties:
-          label:
-            disabled: true
-          placeholder: Region
-          options:
-            - Near
-            - Far
-            - Wherever
-            - You Are
+            _state: {{ item.field }}_list
+        actions:
+          onChange:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: set_interviews
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
+{% endfor %}
+      # - id: region_selector
+      #   type: Selector
+      #   layout:
+      #     flex: 1 1 auto
+      #   properties:
+      #     label:
+      #       disabled: true
+      #     placeholder: Region
+      #     options:
+      #       - Near
+      #       - Far
+      #       - Wherever
+      #       - You Are
       - id: month_from
         type: MonthSelector
         layout:
@@ -406,6 +507,18 @@ blocks:
           label:
             disabled: true
           placeholder: Month From
+        actions:
+          onChange:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: set_interviews
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
       - id: month_to
         type: MonthSelector
         layout:
@@ -414,25 +527,44 @@ blocks:
           label:
             disabled: true
           placeholder: Month To
-  - id: element_selector
+        actions:
+          onChange:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: set_interviews
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
+  - id: elements_selector
     type: CheckboxSelector
     properties:
       label:
         disabled: true
       placeholder: Select Elements
       options:
-        - Time to Order
-        - Communication
-        - Tech Info
-        - Follow Up
-        - Quotation Accuracy
-        - Parts Availability
-        - Order Completion Time
-        - Ease of Business
-        # - Recommendation
-        # - Repurchase Likelihood
-        # - Overall Experience
-        # - Additional Info
+        _mql_aggregate:
+          on:
+            _var: elements
+          pipeline:
+            - $project:
+                value: $name
+                label: $name
+    actions:
+      onChange:
+        - id: fetch_interviews
+          type: Fetch
+          params:
+            - totals
+            - interviews
+        - id: set_interviews
+          type: SetState
+          params:
+            interviews:
+              _request: interviews
   - id: interviews_card
     type: Card
     style:
@@ -455,23 +587,6 @@ blocks:
                   params:
                     blockId: interview_details_modal
                     method: toggleOpen
-            #     - id: set_selected_id
-            #       type: SetState
-            #       params:
-            #         selected_id:
-            #           _state: interviews.$._id
-            #     - id: fetch_selected
-            #       type: Fetch
-            #       params:
-            #         - fetch_selected
-            #     - id: set_selected
-            #       type: SetState
-            #       params:
-            #         selected:
-            #           _get:
-            #             key: '0'
-            #             from:
-            #               _request: fetch_selected
             blocks:
               - id: interviews.$.header_box
                 type: Box
@@ -479,32 +594,17 @@ blocks:
                   contentAlign: middle
                   contentGutter: 16
                 blocks:
-                  - id: interviews.$.respondent
+                  - id: interviews.$.Mnt
                     type: Html
                     layout:
-                      span: 6
+                      span: 2
                     properties:
                       html:
                         _nunjucks:
                           template: |
                             {% raw %}
                             <font style='font-size:14px' >
-                              <b>{{ respondent }}</b>
-                            </font>
-                            {% endraw %}
-                          on:
-                            _state: interviews.$
-                  - id: interviews.$.branch
-                    type: Html
-                    layout:
-                      span: 6
-                    properties:
-                      html:
-                        _nunjucks:
-                          template: |
-                            {% raw %}
-                            <font style='font-size:14px' >
-                              <b>{{ branch }}</b>
+                              <b>{{ Mnt | date("MMM YYYY") }}</b>
                             </font>
                             {% endraw %}
                           on:
@@ -512,13 +612,13 @@ blocks:
                   - id: interviews.$.promoter
                     type: Html
                     layout:
-                      span: 6
+                      span: 2
                     properties:
                       html:
                         _nunjucks:
                           template: |
                             {% raw %}
-                            NPS Status: <font style='font-size:14px; color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
+                            <font style='font-size:14px; color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
                             {% endraw %}
                           on:
                             _state: interviews.$
@@ -526,7 +626,7 @@ blocks:
                     type: Box
                     layout:
                       span: 6
-                      contentGutter: 8
+                      contentGutter: [8,0]
                     blocks:
                       - id: csi_label
                         type: Html
@@ -561,9 +661,9 @@ blocks:
                                           - 80
                                       then: '#52c41a'
                                     - case:
-                                        $lte:
+                                        $lt:
                                           - $csi
-                                          - 65
+                                          - 70
                                       then: '#f5222d'
                                   default: '#8c8c8c'
                               on:
@@ -577,42 +677,30 @@ blocks:
                             _nunjucks:
                               template: |
                                 {% raw %}
-                                <font style='font-size:14px;' ><b>{{ csi }}</b></font>
+                                <font style='font-size:14px;' ><b>{{ csi | round(1) }}</b></font>
                                 {% endraw %}
                               on:
                                 _state: interviews.$
-              - id: interviews.$.elements_verbatim
+                  - id: interviews.$.respondent
+                    type: Html
+                    layout:
+                      flex: 1 1 auto
+                    properties:
+                      html:
+                        _var: respondent_details_list
+              - id: interviews.$.elements_comment
                 type: List
                 layout:
-                  contentGutter: 8
+                  contentGutter: [8,0]
                 blocks:
-                  - id: interviews.$.elements_verbatim.$.score
-                    type: Avatar
+                  - id: interviews.$.elements_comment.$.score
+                    type: Badge
                     layout:
                       size: auto
                     properties:
-                      size: small
-                      content:
-                        _state: interviews.$.elements_verbatim.$.score
-                      color:
-                        _mql_expr:
-                          expr:
-                            $switch:
-                              branches:
-                                - case:
-                                    $gte:
-                                      - $score
-                                      - 9
-                                  then: '#52c41a'
-                                - case:
-                                    $lte:
-                                      - $score
-                                      - 6
-                                  then: '#f5222d'
-                              default: '#8c8c8c'
-                          on:
-                            _state: interviews.$.elements_verbatim.$
-                  - id: interviews.$.elements_verbatim.$.name
+                      count:
+                        _state: interviews.$.elements_comment.$.score
+                  - id: interviews.$.elements_comment.$.name
                     type: Html
                     layout:
                       size: auto
@@ -624,20 +712,20 @@ blocks:
                             <font style='font-size:12px;' ><b>{{ name }}</b></font>
                             {% endraw %}
                           on:
-                            _state: interviews.$.elements_verbatim.$
-                  - id: interviews.$.elements_verbatim.$.verbatim
+                            _state: interviews.$.elements_comment.$
+                  - id: interviews.$.elements_comment.$.comment
                     type: Html
-                    layout:
-                      size: auto
+                    # layout:
+                    #   size: auto
                     properties:
                       html:
                         _nunjucks:
                           template: |
                             {% raw %}
-                            <font style='font-size:12px;' >{{ verbatim }}</font>
+                            <font style='font-size:12px;' >{{ comment }}</font>
                             {% endraw %}
                           on:
-                            _state: interviews.$.elements_verbatim.$
+                            _state: interviews.$.elements_comment.$
               - id: interviews.$.divider
                 type: Divider
                 visible:
@@ -659,6 +747,43 @@ blocks:
         layout:
           size: auto
         properties:
-          # showSizeChanger: true
-          showTotal: true
-          total: 20
+          defaultCurrent: 1
+          showSizeChanger: true
+          pageSizeOptions: [5, 10, 20, 50, 100]
+          responsive: true
+          total:
+            _get:
+              key: 0.total
+              from:
+                _request: totals
+        actions:
+          onShowSizeChange:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: scroll_top
+              type: ScrollTo
+              params:
+                top: 0
+            - id: set_results
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
+          onChange:
+            - id: fetch_interviews
+              type: Fetch
+              params:
+                - totals
+                - interviews
+            - id: scroll_top
+              type: ScrollTo
+              params:
+                top: 0
+            - id: set_results
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews

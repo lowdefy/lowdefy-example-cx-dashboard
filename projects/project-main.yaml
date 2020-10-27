@@ -1,8 +1,8 @@
 _ref:
   path: templates/dashboard-main.yaml.njk
   vars:
-    page_id: dashboard
-    dashboard_name: Dashboard
+    page_id: project
+    dashboard_name: Project
     connectionId: cx_collection
     projects:
       - Parts

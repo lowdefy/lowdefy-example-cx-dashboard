@@ -1,0 +1,75 @@
+_ref:
+  path: templates/dashboard-data.yaml.njk
+  vars:
+    page_id: project
+    dashboard_name: Project Responses
+    connectionId: cx_collection
+    projects:
+      - Parts
+
+    filter_fields:
+      - name: Region
+        field: region
+
+    elements:
+      - name: Time to Order
+        score: Q1
+        comment: V1
+      - name: Communication
+        score: Q2
+        comment: V2
+      - name: Tech Info
+        score: Q3
+        comment: V3
+      - name: Quotation Accuracy
+        score: Q4
+        comment: V4
+      - name: Follow Up
+        score: Q5
+        comment: V5
+      - name: Parts Availability
+        score: Q6
+        comment: V6
+      - name: Order Completion Time
+        score: Q7
+        comment: V7
+      - name: Ease of Business
+        score: Q11
+        comment: V11
+      - name: Recommendation
+        score: Q12
+        comment: V12
+      - name: Repurchase likelihood
+        score: Q13
+        comment: V13
+      - name: Overall experience
+        score: Q14
+        comment: V14
+      - name: Additional Info
+        score: Q20
+        comment: V20
+        
+    respondent_details_list:
+      _nunjucks:
+        template: |
+          <font style='font-size:14px' >
+            {{ respondent }} <b>|</b> {{ company }} <b>|</b> {{ region }}
+          </font>
+        on:
+          _state: interviews.$
+
+    respondent_details_modal:
+      _nunjucks:
+        template: |
+          #### Respondent Details
+          <b>Month:</b> {{ Mnt | date("MMMM YYYY")  }} <br/>
+          <b>Name:</b> {{ respondent }} <br/>
+          <b>Contact:</b> {{ phone }} <br/>
+          <b>Company:</b> {{ company }} <br/>
+          <b>Interaction Date:</b> {{ interaction_date | date("YYYY-MM-DD") }} <br/>
+          <b>Transaction Number:</b> {{ transaction_number }} <br/>
+          <b>Serial Number:</b> {{ serial_number }} <br/>
+          <b>Agent:</b> {{ agent }} <br/>
+          <b>Region:</b> {{ region }}
+        on:
+          _state: selected
