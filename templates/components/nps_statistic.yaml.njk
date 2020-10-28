@@ -41,9 +41,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
             promoter:
               $ne: null
         - _if:

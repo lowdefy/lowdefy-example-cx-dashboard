@@ -28,9 +28,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in: 
-                _state: projects
+                _state: departments
         - $match:
             $expr:
               $and:
@@ -52,108 +52,74 @@ requests:
             _id: $Mnt
             financial_year:
               $first: $financial_year
-            sales_csi_den:
+            company_csi_den:
+              $sum: 1
+            company_csi_num:
+              $sum: $csi
+            company_csi:
+              $avg: $csi
+{% for item in departments %}
+            {{ item.field }}_csi_den:
               $sum:
                 $cond:
                   - $eq:
-                    - $project
-                    - Sales
+                    - $department
+                    - {{ item.name }}
                   - 1
                   - 0
-            sales_csi_num:
+            {{ item.field }}_csi_num:
               $sum:
                 $cond:
                   - $eq:
-                    - $project
-                    - Sales
+                    - $department
+                    - {{ item.name }}
                   - $csi
                   - 0
-            sales_csi:
+            {{ item.field }}_csi:
               $avg:
                 $cond:
                   - $eq:
-                    - $project
-                    - Sales
+                    - $department
+                    - {{ item.name }}
                   - $csi
                   - null
+{% endfor %}
 
-            parts_csi_den:
+{% for item in divisions %}
+            {{ item.field }}_csi_den:
               $sum:
                 $cond:
-                  - $eq:
-                    - $project
-                    - Parts
+                  - $or:
+{% for department in item.departments %}
+                    - $eq:
+                      - $department
+                      - {{ department }}
+{% endfor %}
                   - 1
                   - 0
-            parts_csi_num:
+            {{ item.field }}_csi_num:
               $sum:
                 $cond:
-                  - $eq:
-                    - $project
-                    - Parts
+                  - $or:
+{% for department in item.departments %}
+                    - $eq:
+                      - $department
+                      - {{ department }}
+{% endfor %}
                   - $csi
                   - 0
-            parts_csi:
+            {{ item.field }}_csi:
               $avg:
                 $cond:
-                  - $eq:
-                    - $project
-                    - Parts
+                  - $or:
+{% for department in item.departments %}
+                    - $eq:
+                      - $department
+                      - {{ department }}
+{% endfor %}
                   - $csi
                   - null
-
-            service_csi_den:
-              $sum:
-                $cond:
-                  - $eq:
-                    - $project
-                    - Service
-                  - 1
-                  - 0
-            service_csi_num:
-              $sum:
-                $cond:
-                  - $eq:
-                    - $project
-                    - Service
-                  - $csi
-                  - 0
-            service_csi:
-              $avg:
-                $cond:
-                  - $eq:
-                    - $project
-                    - Service
-                  - $csi
-                  - null
-
-            after_sales_csi_den:
-              $sum:
-                $cond:
-                  - $in:
-                    - $project
-                    - - Parts
-                      - Service
-                  - 1
-                  - 0
-            after_sales_csi_num:
-              $sum:
-                $cond:
-                  - $in:
-                    - $project
-                    - - Parts
-                      - Service
-                  - $csi
-                  - 0
-            after_sales_csi:
-              $avg:
-                $cond:
-                  - $in:
-                    - $project
-                    - - Parts
-                      - Service
-                  - $csi
-                  - null
+{% endfor %}
         - $sort:
             _id: 1
         - $project:
@@ -164,22 +130,28 @@ requests:
                 - _state: end_month
                 - $_id
             divisions:
-              - name: Sales
-                score: $sales_csi
-                num: $sales_csi_num
-                den: $sales_csi_den
-              - name: After Sales
-                score: $after_sales_csi
-                num: $after_sales_csi_num
-                den: $after_sales_csi_den
-              - name: Parts
-                score: $parts_csi
-                num: $parts_csi_num
-                den: $parts_csi_den
-              - name: Service
-                score: $service_csi
-                num: $service_csi_num
-                den: $service_csi_den
+              - name: Company
+                score: $company_csi
+                num: $company_csi_num
+                den: $company_csi_den
+                company_num: $company_csi_num
+                company_den: $company_csi_den
+{% for item in divisions %}
+              - name: {{ item.name }}
+                score: ${{ item.field }}_csi
+                num: ${{ item.field }}_csi_num
+                den: ${{ item.field }}_csi_den
+                company_num: $company_csi_num
+                company_den: $company_csi_den
+{% endfor %}
+{% for item in departments %}
+              - name: {{ item.name }}
+                score: ${{ item.field }}_csi
+                num: ${{ item.field }}_csi_num
+                den: ${{ item.field }}_csi_den
+                company_num: $company_csi_num
+                company_den: $company_csi_den
+{% endfor %}
         - $unwind:
             path: $divisions
             includeArrayIndex: rank
@@ -267,6 +239,23 @@ requests:
                     - _state: max_financial_year
                   - $divisions.num
                   - 0
+
+            company_den_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.company_den
+                  - 0
+            company_num_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.company_num
+                  - 0
         - $sort: 
             rank: 1
         - $project:
@@ -308,175 +297,16 @@ requests:
                     - $num_fytd
                     - $den_fytd
 
-        - $group:
-            _id: 0
-            divisions:
-              $push: $$ROOT
-            csi_1month:
-              $push:
-                k: $_id
-                v: $csi_1month
-            csi_3month:
-              $push:
-                k: $_id
-                v: $csi_3month
-            csi_6month:
-              $push:
-                k: $_id
-                v: $csi_6month
-            csi_12month:
-              $push:
-                k: $_id
-                v: $csi_12month
-            csi_fytd:
-              $push:
-                k: $_id
-                v: $csi_fytd
+            company_fytd:
+              $cond:
+                - $eq:
+                    - $company_den_fytd
+                    - 0
+                - null
+                - $divide:
+                    - $company_num_fytd
+                    - $company_den_fytd
 
-        - $project:
-            divisions: 1
-            csi_1month:
-              $reduce:
-                input: $csi_1month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            csi_3month:
-              $reduce:
-                input: $csi_3month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            csi_6month:
-              $reduce:
-                input: $csi_6month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            csi_12month:
-              $reduce:
-                input: $csi_12month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            csi_fytd:
-              $reduce:
-                input: $csi_fytd
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-        - $project:
-            csi_fytd: 1
-            A:
-              $concatArrays:
-                - - _id: Company
-                    csi_1month: $csi_1month
-                    csi_3month: $csi_3month
-                    csi_6month: $csi_6month
-                    csi_12month: $csi_12month
-                    csi_fytd: $csi_fytd
-                - $divisions
-        - $unwind:
-            path: $A
-        - $addFields:
-            A.company_fytd: $csi_fytd
-        - $replaceRoot:
-            newRoot: $A
 properties:
   height: 
     _var: height

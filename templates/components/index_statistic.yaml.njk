@@ -42,9 +42,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - _if:
             test:
               _eq:

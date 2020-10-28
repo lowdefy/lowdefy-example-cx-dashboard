@@ -1,6 +1,6 @@
 ## -----------------
 ## 
-## composite_overview
+## overview_composite
 ## Calculate and show index average for current month, 3 months, 6 months and 12 months along with trend micro timeline chart showing max, min and latest values.
 ## 
 ## vars:
@@ -49,6 +49,10 @@ blocks:
                 default: 40
             subtitle_font_size: 14
             icon_size: 12
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions
       - _ref:
           path: templates/components/overview_statistic.yaml.njk
           vars:
@@ -68,6 +72,10 @@ blocks:
                 name: fytd_score_size
                 default: 30
             hide_movement: true
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions
       - _ref:
           path: templates/components/overview_csi_trend_microchart.yaml.njk
           vars:
@@ -82,6 +90,10 @@ blocks:
             color:
               _var: color
             span: 13
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions
 
   - id: nps_box
     type: Box
@@ -109,6 +121,10 @@ blocks:
                 default: 40
             subtitle_font_size: 14
             icon_size: 12
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions
       - _ref:
           path: templates/components/overview_statistic.yaml.njk
           vars:
@@ -128,6 +144,10 @@ blocks:
                 name: fytd_score_size
                 default: 30
             hide_movement: true
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions
       - _ref:
           path: templates/components/overview_nps_trend_microchart.yaml.njk
           vars:
@@ -140,3 +160,7 @@ blocks:
                 name: chart_height
                 default: 90
             span: 13
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions

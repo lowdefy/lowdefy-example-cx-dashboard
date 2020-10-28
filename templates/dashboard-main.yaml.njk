@@ -17,9 +17,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $group:
             _id: $Mnt
             financial_year:
@@ -101,9 +101,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
             Mnt:
               $lte:
                 _state: filter_selected_month
@@ -149,11 +149,11 @@ requests:
                 - 5
 actions:
   onInit:
-    - id: set_projects
+    - id: set_departments
       type: SetState
       params:
-        projects:
-          _var: projects
+        departments:
+          _var: departments
     - id: fetch_init
       type: Fetch
       params: init
@@ -234,13 +234,8 @@ blocks:
         type: Markdown
         properties:
           renderHtml: true
-          content: |
-            A measurement of the level to which products and/ or services supplied by the company meet customer’s expectations
-
-            #### Calculation
-              - Average of all questions that relate to service touch points, based on a rating scale
-              - Touch points: Unique topics (Indexes) in survey that has relevance to your department (Survey unique to each department)
-              - Rating scale: A score from 0 - 10 (0= poor, 10= excellent)
+          content:
+            _var: csi_description
   - id: nps_explainer_modal
     type: Modal
     properties:
@@ -248,38 +243,12 @@ blocks:
       footer: false
       width: 700px
     blocks:
-      # - id: explainer_text
-      #   type: Markdown
-      #   properties:
-      #     renderHtml: true
-      #     content:
-      #       _var: questionnaire
-          # - id: nps_description
-          #   type: Markdown
-          #   style:
-          #       '.markdown-body':
-          #         fontSize: 12px
-          #   properties:
-          #     content: |
-          #       The Net Loyalty Score (NLS) is a customer experience metric that measures customer loyalty, and has been show to be a good predictor of future growth. It gives an indication of how many customers are recommending the product and likely to repurchase, how many have no strong feelings, and how many customers are likely to churn and recommending to others not to use the product.
-
-          #       It based on the question "How likely are you to recommend this company to a friend or colleague?", and is calculated by subtracting the percentage of respondents that score 6 or less, from the percentage that score 9 or above.
-          - id: nps_description
-            type: Markdown
-            properties:
-              renderHtml: true
-              content: |
-                <p>NPS is used to measure the net loyalty of customers after an interaction with the company. It ignores customers who were neither 'very happy / unhappy', to establish what percentage of customers are now more loyal to the brand (Promoters) vs those who are now less loyal (Detractors / At Risk).</p>
-                
-                <p>Calculated from the loyalty questions (Q12, Q13, Q14):<br/>
-                <strong style="color: #006100;">Loyal</strong> (Promoters): Number who scored 9+ on <strong>all</strong> loyalty questions,<br/>
-                <strong>minus</strong><br/>
-                <strong style="color: #a10000;">At Risk</strong> (Detractors): Number who scored less than 6 for <strong>any</strong> of the loyalty questions
-                as percentage of sample who answered loyalty questions.</p>
-                <strong>Example: </strong><br/>
-                <strong style="color: #006100;">25 Loyal</strong> customers <em>minus</em> <strong style="color: #a10000;">10 At Risk</strong><span style="color: #a10000;"> </span>customers of <strong>50 Sample</strong><br/>
-                = 15 / 50<br/>
-                = 30% NPS
+      - id: nps_description
+        type: Markdown
+        properties:
+          renderHtml: true
+          content:
+            _var: nps_description
   - id: title_box
     type: Box
     blocks:

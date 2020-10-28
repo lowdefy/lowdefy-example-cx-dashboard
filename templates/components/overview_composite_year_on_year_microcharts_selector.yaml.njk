@@ -30,11 +30,7 @@ blocks:
       size: small
       allowClear: false
       options:
-        - Company
-        - Sales
-        - After Sales
-        - Parts
-        - Service
+        _var: divisions_options
   - id: charts_box
     type: Box
     layout:
@@ -61,6 +57,10 @@ blocks:
               - "#85a5ff"
               - "#2f54eb"
               - "#030852"
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions
       - _ref:
           path: templates/components/overview_nps_year_on_year_microchart.yaml.njk
           vars:
@@ -82,3 +82,7 @@ blocks:
               - "#ff7875"
               - "#cf1322"
               - "#5c0011"
+            departments:
+              _var: departments
+            divisions:
+              _var: divisions

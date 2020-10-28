@@ -24,302 +24,164 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $group:
             _id: $Mnt
-            sales_promoters:
+            company_promoters:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            company_detractors:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            company_nps_sample:
+              $sum:
+                $cond:
+                  - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+{% for item in departments %}
+            {{ item.field }}_promoters:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $eq:
                       - $promoter
                       - Promoter
                   - 1
                   - 0
-            sales_detractors:
+            {{ item.field }}_detractors:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $eq:
                       - $promoter
                       - Detractor
                   - 1
                   - 0
-            sales_nps_sample:
+            {{ item.field }}_nps_sample:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $ne:
                       - $promoter
                       - null
                   - 1
                   - 0
-
-            parts_promoters:
+{% endfor %}
+{% for item in divisions %}
+            {{ item.field }}_promoters:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $eq:
                       - $promoter
                       - Promoter
                   - 1
                   - 0
-            parts_detractors:
+            {{ item.field }}_detractors:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $eq:
                       - $promoter
                       - Detractor
                   - 1
                   - 0
-            parts_nps_sample:
+            {{ item.field }}_nps_sample:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $ne:
                       - $promoter
                       - null
                   - 1
                   - 0
-
-            service_promoters:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $eq:
-                      - $promoter
-                      - Promoter
-                  - 1
-                  - 0
-            service_detractors:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $eq:
-                      - $promoter
-                      - Detractor
-                  - 1
-                  - 0
-            service_nps_sample:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $ne:
-                      - $promoter
-                      - null
-                  - 1
-                  - 0
-
-            after_sales_promoters:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $eq:
-                      - $promoter
-                      - Promoter
-                  - 1
-                  - 0
-            after_sales_detractors:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $eq:
-                      - $promoter
-                      - Detractor
-                  - 1
-                  - 0
-            after_sales_nps_sample:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $ne:
-                      - $promoter
-                      - null
-                  - 1
-                  - 0
+{% endfor %}
         - $addFields:
-            sales_nps:
+            company_nps:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $sales_promoters
-                            - $sales_detractors
-                        - $sales_nps_sample
+                            - $company_promoters
+                            - $company_detractors
+                        - $company_nps_sample
                     - 100
-            sales_percent_promoters:
+{% for item in departments %}
+            {{ item.field }}_nps:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $sales_promoters
-                        - $sales_nps_sample
-                    - 100
-            sales_percent_detractors:
-              $cond:
-                - $eq:
-                    - $sales_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $sales_detractors
-                        - $sales_nps_sample
-                    - 100
-            parts_nps:
-              $cond:
-                - $eq:
-                    - $parts_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $parts_promoters
-                            - $parts_detractors
-                        - $parts_nps_sample
+                            - ${{ item.field }}_promoters
+                            - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            parts_percent_promoters:
+{% endfor %}
+{% for item in divisions %}
+            {{ item.field }}_nps:
               $cond:
                 - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $parts_promoters
-                        - $parts_nps_sample
-                    - 100
-            parts_percent_detractors:
-              $cond:
-                - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $parts_detractors
-                        - $parts_nps_sample
-                    - 100
-            service_nps:
-              $cond:
-                - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $service_promoters
-                            - $service_detractors
-                        - $service_nps_sample
+                            - ${{ item.field }}_promoters
+                            - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            service_percent_promoters:
-              $cond:
-                - $eq:
-                    - $service_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $service_promoters
-                        - $service_nps_sample
-                    - 100
-            service_percent_detractors:
-              $cond:
-                - $eq:
-                    - $service_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $service_detractors
-                        - $service_nps_sample
-                    - 100
-            after_sales_nps:
-              $cond:
-                - $eq:
-                    - $after_sales_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $after_sales_promoters
-                            - $after_sales_detractors
-                        - $after_sales_nps_sample
-                    - 100
-            after_sales_percent_promoters:
-              $cond:
-                - $eq:
-                    - $after_sales_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $after_sales_promoters
-                        - $after_sales_nps_sample
-                    - 100
-            after_sales_percent_detractors:
-              $cond:
-                - $eq:
-                    - $after_sales_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $after_sales_detractors
-                        - $after_sales_nps_sample
-                    - 100
+{% endfor %}
         - $project:
             month_of_year:
               $month: $_id
@@ -332,35 +194,15 @@ requests:
               $year: $_id
             divisions:
               - name: Company
-                score:
-                  $sum:
-                    - $multiply:
-                        - $sales_nps
-                        - 0.5
-                    - $multiply:
-                        - $parts_nps
-                        - $cond:
-                            - $in:
-                                - null
-                                - [ $sales_nps, $service_nps ]
-                            - 0.5
-                            - 0.25
-                    - $multiply:
-                        - $service_nps
-                        - $cond:
-                            - $in:
-                                - null
-                                - [ $sales_nps, $parts_nps ]
-                            - 0.5
-                            - 0.25
-              - name: Sales
-                score: $sales_nps
-              - name: After Sales
-                score: $after_sales_nps
-              - name: Parts
-                score: $parts_nps
-              - name: Service
-                score: $service_nps
+                score: $company_nps
+{% for item in divisions %}
+              - name: {{ item.name }}
+                score: ${{ item.field }}_nps
+{% endfor %}
+{% for item in departments %}
+              - name: {{ item.name }}
+                score: ${{ item.field }}_nps
+{% endfor %}
         - $match:
             $expr:
               $gte:

@@ -17,9 +17,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $group:
             _id: $Mnt
             financial_year:
@@ -108,9 +108,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
             Mnt:
               $lte:
                 _state: filter_selected_month
@@ -157,11 +157,11 @@ requests:
 
 actions:
   onInit:
-    - id: set_projects
+    - id: set_departments
       type: SetState
       params:
-        projects:
-          _var: projects
+        departments:
+          _var: departments
     - id: fetch_init
       type: Fetch
       params: init
@@ -309,7 +309,7 @@ blocks:
           inner: true
         blocks:
           - _ref:
-              path: templates/components/composite_overview.yaml.njk
+              path: templates/components/overview_composite.yaml.njk
               vars:
                 id: company
                 connectionId: {{ connectionId }}
@@ -322,6 +322,10 @@ blocks:
                   _nunjucks: | 
                     {% raw %}NPS {{ end_month | date("MMM YYYY") }} {% endraw %}
                 color: "#002766"
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
 
   - id: divisions_overview_box
     type: Box
@@ -340,55 +344,40 @@ blocks:
           size: small
           inner: true
         blocks:
+{% for item in divisions_fields %}
           - _ref:
-              path: templates/components/composite_overview.yaml.njk
+              path: templates/components/overview_composite.yaml.njk
               vars:
-                id: sales_division
-                connectionId: {{ connectionId }}
-                division: sales
-                current_csi_title: 
-                  _nunjucks: | 
-                    {% raw %}CSI Sales {% endraw %}
-                current_nps_title: 
-                  _nunjucks: | 
-                    {% raw %}NPS Sales {% endraw %}
-                # current_title_size: 14
-                # current_score_size: 35
-                # fytd_title_size: 12
-                # fytd_score_size: 25
-                # chart_height: 70
+                id: {{ item.field }}
+                connectionId:
+                  _var: connectionId
+                division: {{ item.field }}
+                current_csi_title: CSI {{ item.name }}
+                current_nps_title: NPS {{ item.name }}
                 color: "#002766"
+                current_score_size: 35
+                fytd_score_size: 28
+                chart_height: 85
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
+{% if not loop.last %}
           - id: divider_divisions
             type: Divider
-          - _ref:
-              path: templates/components/composite_overview.yaml.njk
-              vars:
-                id: after_sales
-                connectionId: {{ connectionId }}
-                division: after_sales
-                current_csi_title: 
-                  _nunjucks: | 
-                    {% raw %}CSI After Sales {% endraw %}
-                current_nps_title: 
-                  _nunjucks: | 
-                    {% raw %}NPS After Sales {% endraw %}
-                # current_title_size: 14
-                # current_score_size: 35
-                # fytd_title_size: 12
-                # fytd_score_size: 25
-                # chart_height: 70
-                color: "#002766"
+{% endif %}
+{% endfor %}
 
-  - id: projects_overview_box
+  - id: departments_overview_box
     type: Box
     blocks:
-      - id: projects_overview_title
+      - id: departments_overview_title
         type: Html
         layout:
           size: auto
         properties:
-          html: '<h4>Line of Business</h4>'
-      - id: projects_overview_card
+          html: '<h4>Departments</h4>'
+      - id: departments_overview_card
         type: Card
         layout:
           contentGutter: [8,0]
@@ -396,44 +385,29 @@ blocks:
           size: small
           inner: true
         blocks:
+{% for item in departments_fields %}
           - _ref:
-              path: templates/components/composite_overview.yaml.njk
+              path: templates/components/overview_composite.yaml.njk
               vars:
-                id: parts
-                connectionId: {{ connectionId }}
-                division: parts
-                current_csi_title: 
-                  _nunjucks: | 
-                    {% raw %}CSI Parts {% endraw %}
-                current_nps_title: 
-                  _nunjucks: | 
-                    {% raw %}NPS Parts {% endraw %}
-                # current_title_size: 14
-                # current_score_size: 35
-                # fytd_title_size: 12
-                # fytd_score_size: 25
-                # chart_height: 70
+                id: {{ item.field }}
+                connectionId:
+                  _var: connectionId
+                division: {{ item.field }}
+                current_csi_title: CSI {{ item.name }}
+                current_nps_title: NPS {{ item.name }}
                 color: "#002766"
-          - id: divider_projects_1
+                current_score_size: 30
+                fytd_score_size: 24
+                chart_height: 80
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
+{% if not loop.last %}
+          - id: departments_divisions
             type: Divider
-          - _ref:
-              path: templates/components/composite_overview.yaml.njk
-              vars:
-                id: service
-                connectionId: {{ connectionId }}
-                division: service
-                current_csi_title: 
-                  _nunjucks: | 
-                    {% raw %}CSI Service {% endraw %}
-                current_nps_title: 
-                  _nunjucks: | 
-                    {% raw %}NPS Service {% endraw %}
-                # current_title_size: 14
-                # current_score_size: 35
-                # fytd_title_size: 12
-                # fytd_score_size: 25
-                # chart_height: 70
-                color: "#002766"
+{% endif %}
+{% endfor %}
 
   - id: yoy_box
     type: Box
@@ -468,6 +442,21 @@ blocks:
                 id: yoy_overview
                 connectionId: {{ connectionId }}
                 chart_height: 300
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
+                divisions_options:
+                  _mql_expr:
+                    $concatArrays:
+                      - - Company
+                      - $map:
+                          input:
+                            _var: divisions_fields
+                          in:
+                            $$this.name
+                      - _var: departments
+                    
 
   - id: divisions_overview_csi_box
     type: Box
@@ -492,6 +481,10 @@ blocks:
                 height: 400
                 colors:
                   _global: colors.elements
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
 
   - id: divisions_overview_nps_box
     type: Box
@@ -516,6 +509,10 @@ blocks:
                 height: 400
                 colors:
                   _global: colors.elements
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
 
   - id: divisions_quarterly_csi_box
     type: Box
@@ -539,6 +536,10 @@ blocks:
                 connectionId: {{ connectionId }}
                 division: csi
                 height: 370
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields
   - id: divisions_quarterly_nps_box
     type: Box
     layout:
@@ -561,3 +562,7 @@ blocks:
                 connectionId: {{ connectionId }}
                 division: nps
                 height: 370
+                departments:
+                  _var: departments_fields
+                divisions:
+                  _var: divisions_fields

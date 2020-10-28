@@ -24,44 +24,37 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $group:
             _id: $Mnt
-            sales_csi:
+            company_csi:
+              $avg: $csi
+{% for item in departments %}
+            {{ item.field }}_csi:
               $avg:
                 $cond:
                   - $eq:
-                    - $project
-                    - Sales
+                    - $department
+                    - {{ item.name }}
                   - $csi
                   - null
-            parts_csi:
+{% endfor %}
+
+{% for item in divisions %}
+            {{ item.field }}_csi:
               $avg:
                 $cond:
-                  - $eq:
-                    - $project
-                    - Parts
+                  - $or:
+{% for department in item.departments %}
+                    - $eq:
+                      - $department
+                      - {{ department }}
+{% endfor %}
                   - $csi
                   - null
-            service_csi:
-              $avg:
-                $cond:
-                  - $eq:
-                    - $project
-                    - Service
-                  - $csi
-                  - null
-            after_sales_csi:
-              $avg:
-                $cond:
-                  - $in:
-                    - $project
-                    - - Parts
-                      - Service
-                  - $csi
-                  - null
+{% endfor %}
         - $project:
             month_of_year:
               $month: $_id
@@ -74,35 +67,15 @@ requests:
               $year: $_id
             divisions:
               - name: Company
-                score:
-                  $sum:
-                    - $multiply:
-                        - $sales_csi
-                        - 0.5
-                    - $multiply:
-                        - $parts_csi
-                        - $cond:
-                            - $in:
-                                - null
-                                - [ $sales_csi, $service_csi ]
-                            - 0.5
-                            - 0.25
-                    - $multiply:
-                        - $service_csi
-                        - $cond:
-                            - $in:
-                                - null
-                                - [ $sales_csi, $parts_csi ]
-                            - 0.5
-                            - 0.25
-              - name: Sales
-                score: $sales_csi
-              - name: After Sales
-                score: $after_sales_csi
-              - name: Parts
-                score: $parts_csi
-              - name: Service
-                score: $service_csi
+                score: $company_csi
+{% for item in divisions %}
+              - name: {{ item.name }}
+                score: ${{ item.field }}_csi
+{% endfor %}
+{% for item in departments %}
+              - name: {{ item.name }}
+                score: ${{ item.field }}_csi
+{% endfor %}
         - $match:
             $expr:
               $gte:

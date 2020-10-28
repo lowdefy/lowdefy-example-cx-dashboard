@@ -28,9 +28,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in: 
-                _state: projects
+                _state: departments
         - $match:
             $expr:
               $and:
@@ -52,156 +52,115 @@ requests:
             _id: $Mnt
             financial_year:
               $first: $financial_year
-            sales_promoters:
+            company_promoters:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            company_detractors:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            company_nps_sample:
+              $sum:
+                $cond:
+                  - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+{% for item in departments %}
+            {{ item.field }}_promoters:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $eq:
                       - $promoter
                       - Promoter
                   - 1
                   - 0
-            sales_detractors:
+            {{ item.field }}_detractors:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $eq:
                       - $promoter
                       - Detractor
                   - 1
                   - 0
-            sales_nps_sample:
+            {{ item.field }}_nps_sample:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $ne:
                       - $promoter
                       - null
                   - 1
                   - 0
-
-            parts_promoters:
+{% endfor %}
+{% for item in divisions %}
+            {{ item.field }}_promoters:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $eq:
                       - $promoter
                       - Promoter
                   - 1
                   - 0
-            parts_detractors:
+            {{ item.field }}_detractors:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $eq:
                       - $promoter
                       - Detractor
                   - 1
                   - 0
-            parts_nps_sample:
+            {{ item.field }}_nps_sample:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $ne:
                       - $promoter
                       - null
                   - 1
                   - 0
-
-            service_promoters:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $eq:
-                      - $promoter
-                      - Promoter
-                  - 1
-                  - 0
-            service_detractors:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $eq:
-                      - $promoter
-                      - Detractor
-                  - 1
-                  - 0
-            service_nps_sample:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $ne:
-                      - $promoter
-                      - null
-                  - 1
-                  - 0
-
-            after_sales_promoters:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $eq:
-                      - $promoter
-                      - Promoter
-                  - 1
-                  - 0
-            after_sales_detractors:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $eq:
-                      - $promoter
-                      - Detractor
-                  - 1
-                  - 0
-            after_sales_nps_sample:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $ne:
-                      - $promoter
-                      - null
-                  - 1
-                  - 0
+{% endfor %}
         - $sort:
             _id: 1
         - $project:
@@ -212,22 +171,31 @@ requests:
                 - _state: end_month
                 - $_id
             divisions:
-              - name: Sales
-                nps_sample: $sales_nps_sample
-                promoters: $sales_promoters
-                detractors: $sales_detractors
-              - name: After Sales
-                nps_sample: $after_sales_nps_sample
-                promoters: $after_sales_promoters
-                detractors: $after_sales_detractors
-              - name: Parts
-                nps_sample: $parts_nps_sample
-                promoters: $parts_promoters
-                detractors: $parts_detractors
-              - name: Service
-                nps_sample: $service_nps_sample
-                promoters: $service_promoters
-                detractors: $service_detractors
+              - name: Company
+                nps_sample: $company_nps_sample
+                promoters: $company_promoters
+                detractors: $company_detractors
+                company_nps_sample: $company_nps_sample
+                company_promoters: $company_promoters
+                company_detractors: $company_detractors
+{% for item in divisions %}
+              - name: {{ item.name }}
+                nps_sample: ${{ item.field }}_nps_sample
+                promoters: ${{ item.field }}_promoters
+                detractors: ${{ item.field }}_detractors
+                company_nps_sample: $company_nps_sample
+                company_promoters: $company_promoters
+                company_detractors: $company_detractors
+{% endfor %}
+{% for item in departments %}
+              - name: {{ item.name }}
+                nps_sample: ${{ item.field }}_nps_sample
+                promoters: ${{ item.field }}_promoters
+                detractors: ${{ item.field }}_detractors
+                company_nps_sample: $company_nps_sample
+                company_promoters: $company_promoters
+                company_detractors: $company_detractors
+{% endfor %}
         - $unwind:
             path: $divisions
             includeArrayIndex: rank
@@ -341,6 +309,31 @@ requests:
                     - _state: max_financial_year
                   - $divisions.detractors
                   - 0
+
+            company_nps_sample_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.company_nps_sample
+                  - 0
+            company_promoters_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.company_promoters
+                  - 0
+            company_detractors_fytd:
+              $sum:
+                $cond:
+                  - $eq:
+                    - $financial_year
+                    - _state: max_financial_year
+                  - $divisions.company_detractors
+                  - 0
         - $sort: 
             rank: 1
         - $project:
@@ -409,175 +402,19 @@ requests:
                             - $detractors_fytd
                         - $nps_sample_fytd
                     - 100
-        - $group:
-            _id: 0
-            divisions:
-              $push: $$ROOT
-            nps_1month:
-              $push:
-                k: $_id
-                v: $nps_1month
-            nps_3month:
-              $push:
-                k: $_id
-                v: $nps_3month
-            nps_6month:
-              $push:
-                k: $_id
-                v: $nps_6month
-            nps_12month:
-              $push:
-                k: $_id
-                v: $nps_12month
-            nps_fytd:
-              $push:
-                k: $_id
-                v: $nps_fytd
-
-        - $project:
-            divisions: 1
-            nps_1month:
-              $reduce:
-                input: $nps_1month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            nps_3month:
-              $reduce:
-                input: $nps_3month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            nps_6month:
-              $reduce:
-                input: $nps_6month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            nps_12month:
-              $reduce:
-                input: $nps_12month
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-            nps_fytd:
-              $reduce:
-                input: $nps_fytd
-                initialValue: 0
-                in:
-                  $sum:
-                    - $$value
-                    - $multiply:
-                        - $$this.v
-                        - $cond:
-                            - $eq:
-                                - $$this.k
-                                - Sales
-                            - 0.5
-                            - $cond:
-                                - $in:
-                                    - $$this.k
-                                    - [Parts, Service]
-                                - $cond:
-                                    - $eq:
-                                        - null
-                                        - $$this.v
-                                    - 0.5
-                                    - 0.25
-                                - 0
-        - $project:
-            nps_fytd: 1
-            A:
-              $concatArrays:
-                - - _id: Company
-                    nps_1month: $nps_1month
-                    nps_3month: $nps_3month
-                    nps_6month: $nps_6month
-                    nps_12month: $nps_12month
-                    nps_fytd: $nps_fytd
-                - $divisions
-        - $unwind:
-            path: $A
-        - $addFields:
-            A.company_fytd: $nps_fytd
-        - $replaceRoot:
-            newRoot: $A
+            company_fytd:
+              $cond:
+                - $eq:
+                    - $company_nps_sample_fytd
+                    - 0
+                - null
+                - $multiply:
+                    - $divide:
+                        - $subtract:
+                            - $company_promoters_fytd
+                            - $company_detractors_fytd
+                        - $company_nps_sample_fytd
+                    - 100
 
 properties:
   height: 

@@ -4,8 +4,8 @@ _ref:
     page_id: project
     dashboard_name: Project Responses
     connectionId: cx_collection
-    projects:
-      - Parts
+    departments:
+      - Fulfillment
 
     filter_fields:
       - name: Region
@@ -29,7 +29,7 @@ _ref:
       - name: Follow Up
         score: Q5
         comment: V5
-      - name: Parts Availability
+      - name: Availability
         score: Q6
         comment: V6
       - name: Order Completion Time

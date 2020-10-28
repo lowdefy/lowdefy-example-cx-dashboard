@@ -11,11 +11,11 @@ layout:
   contentGutter: 8
 actions:
   onInit:
-    - id: set_projects
+    - id: set_departments
       type: SetState
       params:
-        projects:
-          _var: projects
+        departments:
+          _var: departments
         pagination:
           pageSize: 10
           skip: 0
@@ -47,9 +47,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $group:
             _id: $Mnt
             total:
@@ -144,9 +144,9 @@ requests:
                   $meta: textScore
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $match:
             $expr:
               $and:
@@ -268,9 +268,9 @@ requests:
                       _nunjucks: "{% raw %}\"{{ search_input }}\"{% endraw %}"
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $match:
             $expr:
               $and:

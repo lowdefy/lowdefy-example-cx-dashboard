@@ -22,9 +22,9 @@ requests:
         - $match:
             $and:
               - published: true
-              - project:
+              - department:
                   $in:
-                    _state: projects
+                    _state: departments
               - Mnt:
                   $eq:
                     _state: end_month

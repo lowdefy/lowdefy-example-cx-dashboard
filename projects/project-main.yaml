@@ -4,8 +4,8 @@ _ref:
     page_id: project
     dashboard_name: Project
     connectionId: cx_collection
-    projects:
-      - Parts
+    departments:
+      - Fulfillment
     subindices:
       - name: CSI
         field: csi
@@ -50,14 +50,14 @@ _ref:
         field: Q14
         subindex: Experience
     questionnaire: |
-      Based on your experience with The Company's Sales department, how would you rate from 0 (very poor) to 10 (excellent), the following aspects of their service delivery:
+      Based on your experience with The Company's Fulfillment department, how would you rate from 0 (very poor) to 10 (excellent), the following aspects of their service delivery:
 
-      #### Agent Index (with regards to the Sales person)
+      #### Agent Index (with regards to the agent)
       Q1 The time it took to place the order _(Time to order)_<br/>
-      Q2 The Sales person's communication with you _(Communication)_<br/>
-      Q3 Technical information provided by the Sales person during the purchase _(Technical info)_<br/>
+      Q2 The agent's communication with you _(Communication)_<br/>
+      Q3 Technical information provided by the agent during the purchase _(Technical info)_<br/>
       Q4 The accuracy of your quotation _(Quotation accuracy)_<br/>
-      Q5 The Sales person getting back to you as promised _(Follow up)_
+      Q5 The agent getting back to you as promised _(Follow up)_
 
       #### Dealer Index (with regards to the dealer)
       Q6 Equipment availability _(Availability)_<br/>
@@ -77,14 +77,6 @@ _ref:
         - Touch points: Unique topics (Indexes) in survey that has relevance to your department (Survey unique to each department)
         - Rating scale: A score from 0 - 10 (0= poor, 10= excellent)
     nps_description: |
-      <p>NLS is used to measure the net loyalty of customers after an interaction with the company. It ignores customers who were neither 'very happy / unhappy', to establish what percentage of customers are now more loyal to the brand (Promoters) vs those who are now less loyal (Detractors / At Risk).</p>
-      
-      <p>Calculated from the loyalty questions (Q12, Q13, Q14):<br/>
-      <strong style="color: #006100;">Loyal</strong> (Promoters): Number who scored 9+ on <strong>all</strong> loyalty questions,<br/>
-      <strong>minus</strong><br/>
-      <strong style="color: #a10000;">At Risk</strong> (Detractors): Number who scored less than 6 for <strong>any</strong> of the loyalty questions
-      as percentage of sample who answered loyalty questions.</p>
-      <strong>Example: </strong><br/>
-      <strong style="color: #006100;">25 Loyal</strong> customers <em>minus</em> <strong style="color: #a10000;">10 At Risk</strong><span style="color: #a10000;"> </span>customers of <strong>50 Sample</strong><br/>
-      = 15 / 50<br/>
-      = 30% NPS
+      The Net Promoter Score (NPS) is a customer experience metric that measures customer loyalty, and has been show to be a good predictor of future growth. It gives an indication of how many customers are recommending the product and likely to repurchase, how many have no strong feelings, and how many customers are likely to churn and recommending to others not to use the product.
+
+      It based on the question "How likely are you to recommend this company to a friend or colleague?", and is calculated by subtracting the percentage of respondents that score 6 or less, from the percentage that score 9 or above.

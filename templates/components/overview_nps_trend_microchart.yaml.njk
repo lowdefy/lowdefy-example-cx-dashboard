@@ -33,9 +33,9 @@ requests:
       pipeline:
         - $match:
             published: true
-            project:
+            department:
               $in:
-                _state: projects
+                _state: departments
         - $match:
             $expr:
               $and:
@@ -57,297 +57,225 @@ requests:
                                 - _var: month_average
         - $group:
             _id: $Mnt
-            sales_promoters:
+            company_promoters:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Promoter
+                  - 1
+                  - 0
+            company_detractors:
+              $sum:
+                $cond:
+                  - $eq:
+                      - $promoter
+                      - Detractor
+                  - 1
+                  - 0
+            company_nps_sample:
+              $sum:
+                $cond:
+                  - $ne:
+                      - $promoter
+                      - null
+                  - 1
+                  - 0
+{% for item in departments %}
+            {{ item.field }}_promoters:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $eq:
                       - $promoter
                       - Promoter
                   - 1
                   - 0
-            sales_detractors:
+            {{ item.field }}_detractors:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $eq:
                       - $promoter
                       - Detractor
                   - 1
                   - 0
-            sales_nps_sample:
+            {{ item.field }}_nps_sample:
               $sum:
                 $cond:
                   - $and:
                     - $eq:
-                      - $project
-                      - Sales
+                      - $department
+                      - {{ item.name }}
                     - $ne:
                       - $promoter
                       - null
                   - 1
                   - 0
-
-            parts_promoters:
+{% endfor %}
+{% for item in divisions %}
+            {{ item.field }}_promoters:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $eq:
                       - $promoter
                       - Promoter
                   - 1
                   - 0
-            parts_detractors:
+            {{ item.field }}_detractors:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $eq:
                       - $promoter
                       - Detractor
                   - 1
                   - 0
-            parts_nps_sample:
+            {{ item.field }}_nps_sample:
               $sum:
                 $cond:
                   - $and:
-                    - $eq:
-                      - $project
-                      - Parts
+                    - $or:
+{% for department in item.departments %}
+                      - $eq:
+                        - $department
+                        - {{ department }}
+{% endfor %}
                     - $ne:
                       - $promoter
                       - null
                   - 1
                   - 0
-
-            service_promoters:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $eq:
-                      - $promoter
-                      - Promoter
-                  - 1
-                  - 0
-            service_detractors:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $eq:
-                      - $promoter
-                      - Detractor
-                  - 1
-                  - 0
-            service_nps_sample:
-              $sum:
-                $cond:
-                  - $and:
-                    - $eq:
-                      - $project
-                      - Service
-                    - $ne:
-                      - $promoter
-                      - null
-                  - 1
-                  - 0
-
-            after_sales_promoters:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $eq:
-                      - $promoter
-                      - Promoter
-                  - 1
-                  - 0
-            after_sales_detractors:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $eq:
-                      - $promoter
-                      - Detractor
-                  - 1
-                  - 0
-            after_sales_nps_sample:
-              $sum:
-                $cond:
-                  - $and:
-                    - $in:
-                      - $project
-                      - - Parts
-                        - Service
-                    - $ne:
-                      - $promoter
-                      - null
-                  - 1
-                  - 0
+{% endfor %}
         - $addFields:
-            sales_nps:
+            company_nps:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $sales_promoters
-                            - $sales_detractors
-                        - $sales_nps_sample
+                            - $company_promoters
+                            - $company_detractors
+                        - $company_nps_sample
                     - 100
-            sales_percent_promoters:
+            company_percent_promoters:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $sales_promoters
-                        - $sales_nps_sample
+                        - $company_promoters
+                        - $company_nps_sample
                     - 100
-            sales_percent_detractors:
+            company_percent_detractors:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $sales_detractors
-                        - $sales_nps_sample
+                        - $company_detractors
+                        - $company_nps_sample
                     - 100
-            parts_nps:
+{% for item in divisions %}
+            {{ item.field }}_nps:
               $cond:
                 - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $parts_promoters
-                            - $parts_detractors
-                        - $parts_nps_sample
-                    - 100
-            parts_percent_promoters:
-              $cond:
-                - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $parts_promoters
-                        - $parts_nps_sample
-                    - 100
-            parts_percent_detractors:
-              $cond:
-                - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $parts_detractors
-                        - $parts_nps_sample
-                    - 100
-            service_nps:
-              $cond:
-                - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $service_promoters
-                            - $service_detractors
-                        - $service_nps_sample
+                            - ${{ item.field }}_promoters
+                            - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            service_percent_promoters:
+            {{ item.field }}_percent_promoters:
               $cond:
                 - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $service_promoters
-                        - $service_nps_sample
+                        - ${{ item.field }}_promoters
+                        - ${{ item.field }}_nps_sample
                     - 100
-            service_percent_detractors:
+            {{ item.field }}_percent_detractors:
               $cond:
                 - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $service_detractors
-                        - $service_nps_sample
+                        - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            after_sales_nps:
+{% endfor %}
+{% for item in departments %}
+            {{ item.field }}_nps:
               $cond:
                 - $eq:
-                    - $after_sales_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $after_sales_promoters
-                            - $after_sales_detractors
-                        - $after_sales_nps_sample
+                            - ${{ item.field }}_promoters
+                            - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            after_sales_percent_promoters:
+            {{ item.field }}_percent_promoters:
               $cond:
                 - $eq:
-                    - $after_sales_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $after_sales_promoters
-                        - $after_sales_nps_sample
+                        - ${{ item.field }}_promoters
+                        - ${{ item.field }}_nps_sample
                     - 100
-            after_sales_percent_detractors:
+            {{ item.field }}_percent_detractors:
               $cond:
                 - $eq:
-                    - $after_sales_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $after_sales_detractors
-                        - $after_sales_nps_sample
+                        - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
+{% endfor %}
         - $sort:
             _id: 1
         - $group:
@@ -356,104 +284,30 @@ requests:
               $push:
                 month: $_id
 
-                company_nps: 
-                  $sum:
-                    - $multiply:
-                        - $sales_nps
-                        - 0.5
-                    - $multiply:
-                        - $parts_nps
-                        - $cond:
-                            - $in:
-                                - null
-                                - - $sales_nps
-                                  - $service_nps
-                            - 0.5
-                            - 0.25
-                    - $multiply:
-                        - $service_nps
-                        - $cond:
-                            - $in:
-                                - null
-                                - - $sales_nps
-                                  - $parts_nps
-                            - 0.5
-                            - 0.25
-                company_percent_promoters: 
-                  $sum:
-                    - $multiply:
-                        - $sales_percent_promoters
-                        - 0.5
-                    - $multiply:
-                        - $parts_percent_promoters
-                        - $cond:
-                            - $in:
-                                - null
-                                - - $sales_percent_promoters
-                                  - $service_percent_promoters
-                            - 0.5
-                            - 0.25
-                    - $multiply:
-                        - $service_percent_promoters
-                        - $cond:
-                            - $in:
-                                - null
-                                - - $sales_percent_promoters
-                                  - $parts_percent_promoters
-                            - 0.5
-                            - 0.25
-                company_percent_detractors: 
-                  $sum:
-                    - $multiply:
-                        - $sales_percent_detractors
-                        - 0.5
-                    - $multiply:
-                        - $parts_percent_detractors
-                        - $cond:
-                            - $in:
-                                - null
-                                - - $sales_percent_detractors
-                                  - $service_percent_detractors
-                            - 0.5
-                            - 0.25
-                    - $multiply:
-                        - $service_percent_detractors
-                        - $cond:
-                            - $in:
-                                - null
-                                - - $sales_percent_detractors
-                                  - $parts_percent_detractors
-                            - 0.5
-                            - 0.25
+                company_nps: $company_nps
+                company_nps_sample: $company_nps_sample
+                company_promoters: $company_promoters
+                company_detractors: $company_detractors
+                company_percent_promoters: $company_percent_promoters
+                company_percent_detractors: $company_percent_detractors
 
-                after_sales_nps: $after_sales_nps
-                after_sales_nps_sample: $after_sales_nps_sample
-                after_sales_promoters: $after_sales_promoters
-                after_sales_detractors: $after_sales_detractors
-                after_sales_percent_promoters: $after_sales_percent_promoters
-                after_sales_percent_detractors: $after_sales_percent_detractors
+{% for item in divisions %}
+                {{ item.field }}_nps: ${{ item.field }}_nps
+                {{ item.field }}_nps_sample: ${{ item.field }}_nps_sample
+                {{ item.field }}_promoters: ${{ item.field }}_promoters
+                {{ item.field }}_detractors: ${{ item.field }}_detractors
+                {{ item.field }}_percent_promoters: ${{ item.field }}_percent_promoters
+                {{ item.field }}_percent_detractors: ${{ item.field }}_percent_detractors
+{% endfor %}
 
-                parts_nps: $parts_nps
-                parts_nps_sample: $parts_nps_sample
-                parts_promoters: $parts_promoters
-                parts_detractors: $parts_detractors
-                parts_percent_promoters: $parts_percent_promoters
-                parts_percent_detractors: $parts_percent_detractors
-
-                sales_nps: $sales_nps
-                sales_nps_sample: $sales_nps_sample
-                sales_promoters: $sales_promoters
-                sales_detractors: $sales_detractors
-                sales_percent_promoters: $sales_percent_promoters
-                sales_percent_detractors: $sales_percent_detractors
-                
-                service_nps: $service_nps
-                service_nps_sample: $service_nps_sample
-                service_promoters: $service_promoters
-                service_detractors: $service_detractors
-                service_percent_promoters: $service_percent_promoters
-                service_percent_detractors: $service_percent_detractors
-
+{% for item in departments %}
+                {{ item.field }}_nps: ${{ item.field }}_nps
+                {{ item.field }}_nps_sample: ${{ item.field }}_nps_sample
+                {{ item.field }}_promoters: ${{ item.field }}_promoters
+                {{ item.field }}_detractors: ${{ item.field }}_detractors
+                {{ item.field }}_percent_promoters: ${{ item.field }}_percent_promoters
+                {{ item.field }}_percent_detractors: ${{ item.field }}_percent_detractors
+{% endfor %}
         - $project:
             A:
               $map:
@@ -499,427 +353,252 @@ requests:
                           - $subtract:
                               - _var: month_average
                               - 1
-
-                  sales_nps_current:
-                    $arrayElemAt:
-                      - $A.sales_nps
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-                  sales_percent_promoters_current:
-                    $arrayElemAt:
-                      - $A.sales_percent_promoters
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-                  sales_percent_detractors_current:
-                    $arrayElemAt:
-                      - $A.sales_percent_detractors
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-
-                  sales_nps_sample:
+                  company_nps_sample:
                     $sum:
                       $slice:
-                        - $A.sales_nps_sample
+                        - $A.company_nps_sample
                         - $$this
                         - _var: month_average
-                  sales_promoters:
+                  company_promoters:
                     $sum:
                       $slice:
-                        - $A.sales_promoters
+                        - $A.company_promoters
                         - $$this
                         - _var: month_average
-                  sales_detractors:
+                  company_detractors:
                     $sum:
                       $slice:
-                        - $A.sales_detractors
+                        - $A.company_detractors
                         - $$this
                         - _var: month_average
 
-                  parts_nps_current:
+{% for item in divisions %}
+                  {{ item.field }}_nps_current:
                     $arrayElemAt:
-                      - $A.parts_nps
+                      - $A.{{ item.field }}_nps
                       - $sum:
                           - $$this
                           - $subtract:
                               - _var: month_average
                               - 1
-                  parts_percent_promoters_current:
+                  {{ item.field }}_percent_promoters_current:
                     $arrayElemAt:
-                      - $A.parts_percent_promoters
+                      - $A.{{ item.field }}_percent_promoters
                       - $sum:
                           - $$this
                           - $subtract:
                               - _var: month_average
                               - 1
-                  parts_percent_detractors_current:
+                  {{ item.field }}_percent_detractors_current:
                     $arrayElemAt:
-                      - $A.parts_percent_detractors
+                      - $A.{{ item.field }}_percent_detractors
                       - $sum:
                           - $$this
                           - $subtract:
                               - _var: month_average
                               - 1
-                  parts_nps_sample:
+                  {{ item.field }}_nps_sample:
                     $sum:
                       $slice:
-                        - $A.parts_nps_sample
+                        - $A.{{ item.field }}_nps_sample
                         - $$this
                         - _var: month_average
-                  parts_promoters:
+                  {{ item.field }}_promoters:
                     $sum:
                       $slice:
-                        - $A.parts_promoters
+                        - $A.{{ item.field }}_promoters
                         - $$this
                         - _var: month_average
-                  parts_detractors:
+                  {{ item.field }}_detractors:
                     $sum:
                       $slice:
-                        - $A.parts_detractors
+                        - $A.{{ item.field }}_detractors
                         - $$this
                         - _var: month_average
+{% endfor %}
 
-                  service_nps_current:
+{% for item in departments %}
+                  {{ item.field }}_nps_current:
                     $arrayElemAt:
-                      - $A.service_nps
+                      - $A.{{ item.field }}_nps
                       - $sum:
                           - $$this
                           - $subtract:
                               - _var: month_average
                               - 1
-                  service_percent_promoters_current:
+                  {{ item.field }}_percent_promoters_current:
                     $arrayElemAt:
-                      - $A.service_percent_promoters
+                      - $A.{{ item.field }}_percent_promoters
                       - $sum:
                           - $$this
                           - $subtract:
                               - _var: month_average
                               - 1
-                  service_percent_detractors_current:
+                  {{ item.field }}_percent_detractors_current:
                     $arrayElemAt:
-                      - $A.service_percent_detractors
+                      - $A.{{ item.field }}_percent_detractors
                       - $sum:
                           - $$this
                           - $subtract:
                               - _var: month_average
                               - 1
-                  service_nps_sample:
+                  {{ item.field }}_nps_sample:
                     $sum:
                       $slice:
-                        - $A.service_nps_sample
+                        - $A.{{ item.field }}_nps_sample
                         - $$this
                         - _var: month_average
-                  service_promoters:
+                  {{ item.field }}_promoters:
                     $sum:
                       $slice:
-                        - $A.service_promoters
+                        - $A.{{ item.field }}_promoters
                         - $$this
                         - _var: month_average
-                  service_detractors:
+                  {{ item.field }}_detractors:
                     $sum:
                       $slice:
-                        - $A.service_detractors
+                        - $A.{{ item.field }}_detractors
                         - $$this
                         - _var: month_average
-
-                  after_sales_nps_current:
-                    $arrayElemAt:
-                      - $A.after_sales_nps
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-                  after_sales_percent_promoters_current:
-                    $arrayElemAt:
-                      - $A.after_sales_percent_promoters
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-                  after_sales_percent_detractors_current:
-                    $arrayElemAt:
-                      - $A.after_sales_percent_detractors
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-                  after_sales_nps_sample:
-                    $sum:
-                      $slice:
-                        - $A.after_sales_nps_sample
-                        - $$this
-                        - _var: month_average
-                  after_sales_promoters:
-                    $sum:
-                      $slice:
-                        - $A.after_sales_promoters
-                        - $$this
-                        - _var: month_average
-                  after_sales_detractors:
-                    $sum:
-                      $slice:
-                        - $A.after_sales_detractors
-                        - $$this
-                        - _var: month_average
-
+{% endfor %}
         - $unwind:
             path: $A
         - $replaceRoot:
             newRoot: $A
         - $addFields:
-            sales_nps:
+            company_nps:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $sales_promoters
-                            - $sales_detractors
-                        - $sales_nps_sample
+                            - $company_promoters
+                            - $company_detractors
+                        - $company_nps_sample
                     - 100
-            sales_percent_promoters:
+            company_percent_promoters:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $sales_promoters
-                        - $sales_nps_sample
+                        - $company_promoters
+                        - $company_nps_sample
                     - 100
-            sales_percent_detractors:
+            company_percent_detractors:
               $cond:
                 - $eq:
-                    - $sales_nps_sample
+                    - $company_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $sales_detractors
-                        - $sales_nps_sample
+                        - $company_detractors
+                        - $company_nps_sample
                     - 100
-            parts_nps:
+{% for item in divisions %}
+            {{ item.field }}_nps:
               $cond:
                 - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $parts_promoters
-                            - $parts_detractors
-                        - $parts_nps_sample
-                    - 100
-            parts_percent_promoters:
-              $cond:
-                - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $parts_promoters
-                        - $parts_nps_sample
-                    - 100
-            parts_percent_detractors:
-              $cond:
-                - $eq:
-                    - $parts_nps_sample
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $parts_detractors
-                        - $parts_nps_sample
-                    - 100
-            service_nps:
-              $cond:
-                - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $service_promoters
-                            - $service_detractors
-                        - $service_nps_sample
+                            - ${{ item.field }}_promoters
+                            - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            service_percent_promoters:
+            {{ item.field }}_percent_promoters:
               $cond:
                 - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $service_promoters
-                        - $service_nps_sample
+                        - ${{ item.field }}_promoters
+                        - ${{ item.field }}_nps_sample
                     - 100
-            service_percent_detractors:
+            {{ item.field }}_percent_detractors:
               $cond:
                 - $eq:
-                    - $service_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $service_detractors
-                        - $service_nps_sample
+                        - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            after_sales_nps:
+{% endfor %}
+{% for item in departments %}
+            {{ item.field }}_nps:
               $cond:
                 - $eq:
-                    - $after_sales_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
                         - $subtract:
-                            - $after_sales_promoters
-                            - $after_sales_detractors
-                        - $after_sales_nps_sample
+                            - ${{ item.field }}_promoters
+                            - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
-            after_sales_percent_promoters:
+            {{ item.field }}_percent_promoters:
               $cond:
                 - $eq:
-                    - $after_sales_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $after_sales_promoters
-                        - $after_sales_nps_sample
+                        - ${{ item.field }}_promoters
+                        - ${{ item.field }}_nps_sample
                     - 100
-            after_sales_percent_detractors:
+            {{ item.field }}_percent_detractors:
               $cond:
                 - $eq:
-                    - $after_sales_nps_sample
+                    - ${{ item.field }}_nps_sample
                     - 0
                 - null
                 - $multiply:
                     - $divide:
-                        - $after_sales_detractors
-                        - $after_sales_nps_sample
+                        - ${{ item.field }}_detractors
+                        - ${{ item.field }}_nps_sample
                     - 100
+{% endfor %}
         - $project:
             month: 1
-            nps_company: 
-              $sum:
-                - $multiply:
-                    - $sales_nps
-                    - 0.5
-                - $multiply:
-                    - $parts_nps
-                    - $cond:
-                        - $in:
-                            - null
-                            - - $sales_nps
-                              - $service_nps
-                        - 0.5
-                        - 0.25
-                - $multiply:
-                    - $service_nps
-                    - $cond:
-                        - $in:
-                            - null
-                            - - $sales_nps
-                              - $parts_nps
-                        - 0.5
-                        - 0.25
-            percent_promoters_company: 
-              $sum:
-                - $multiply:
-                    - $sales_percent_promoters
-                    - 0.5
-                - $multiply:
-                    - $parts_percent_promoters
-                    - $cond:
-                        - $in:
-                            - null
-                            - - $sales_percent_promoters
-                              - $service_percent_promoters
-                        - 0.5
-                        - 0.25
-                - $multiply:
-                    - $service_percent_promoters
-                    - $cond:
-                        - $in:
-                            - null
-                            - - $sales_percent_promoters
-                              - $parts_percent_promoters
-                        - 0.5
-                        - 0.25
-            percent_detractors_company: 
-              $sum:
-                - $multiply:
-                    - $sales_percent_detractors
-                    - 0.5
-                - $multiply:
-                    - $parts_percent_detractors
-                    - $cond:
-                        - $in:
-                            - null
-                            - - $sales_percent_detractors
-                              - $service_percent_detractors
-                        - 0.5
-                        - 0.25
-                - $multiply:
-                    - $service_percent_detractors
-                    - $cond:
-                        - $in:
-                            - null
-                            - - $sales_percent_detractors
-                              - $parts_percent_detractors
-                        - 0.5
-                        - 0.25
+            nps_company: $company_nps
+            percent_promoters_company: $company_percent_promoters
+            percent_detractors_company: $company_percent_detractors
             nps_company_current: $company_nps_current
             percent_promoters_company_current: $company_percent_promoters_current
             percent_detractors_company_current: $company_percent_detractors_current
-
-            nps_sales: $sales_nps
-            percent_promoters_sales: $sales_percent_promoters
-            percent_detractors_sales: $sales_percent_detractors
-            nps_sales_current: $sales_nps_current
-            percent_promoters_sales_current: $sales_percent_promoters_current
-            percent_detractors_sales_current: $sales_percent_detractors_current
-
-            nps_after_sales: $after_sales_nps
-            percent_promoters_after_sales: $after_sales_percent_promoters
-            percent_detractors_after_sales: $after_sales_percent_detractors
-            nps_after_sales_current: $after_sales_nps_current
-            percent_promoters_after_sales_current: $after_sales_percent_promoters_current
-            percent_detractors_after_sales_current: $after_sales_percent_detractors_current
-
-            nps_parts: $parts_nps
-            percent_promoters_parts: $parts_percent_promoters
-            percent_detractors_parts: $parts_percent_detractors
-            nps_parts_current: $parts_nps_current
-            percent_promoters_parts_current: $parts_percent_promoters_current
-            percent_detractors_parts_current: $parts_percent_detractors_current
-
-            nps_service: $service_nps
-            percent_promoters_service: $service_percent_promoters
-            percent_detractors_service: $service_percent_detractors
-            nps_service_current: $service_nps_current
-            percent_promoters_service_current: $service_percent_promoters_current
-            percent_detractors_service_current: $service_percent_detractors_current
+{% for item in divisions %}
+            nps_{{ item.field }}: ${{ item.field }}_nps
+            percent_promoters_{{ item.field }}: ${{ item.field }}_percent_promoters
+            percent_detractors_{{ item.field }}: ${{ item.field }}_percent_detractors
+            nps_{{ item.field }}_current: ${{ item.field }}_nps_current
+            percent_promoters_{{ item.field }}_current: ${{ item.field }}_percent_promoters_current
+            percent_detractors_{{ item.field }}_current: ${{ item.field }}_percent_detractors_current
+{% endfor %}
+{% for item in departments %}
+            nps_{{ item.field }}: ${{ item.field }}_nps
+            percent_promoters_{{ item.field }}: ${{ item.field }}_percent_promoters
+            percent_detractors_{{ item.field }}: ${{ item.field }}_percent_detractors
+            nps_{{ item.field }}_current: ${{ item.field }}_nps_current
+            percent_promoters_{{ item.field }}_current: ${{ item.field }}_percent_promoters_current
+            percent_detractors_{{ item.field }}_current: ${{ item.field }}_percent_detractors_current
+{% endfor %}
 
 properties:
   data:
