@@ -10,3 +10,8 @@ links:
     pageId: project
     properties:
       title: Project
+  - id: project-responses
+    type: MenuLink
+    pageId: project-responses
+    properties:
+      title: Responses
