@@ -88,7 +88,6 @@ requests:
 {% endfor %}
         - $project:
             _id: 0
-        # - $addFields:
             month_to:
               $arrayElemAt:
                 - $months.value
@@ -243,8 +242,8 @@ requests:
                           - $elements_comment.name
                     - 0
         - $sort:
+            score: 1
             Mnt: -1
-            csi: 1
         - $skip:
             _state: pagination.skip
         - $limit:

@@ -1,0 +1,108 @@
+_ref:
+  path: templates/escalate-resolve.yaml.njk
+  vars:
+    page_id: escalate-resolve
+    dashboard_name: Escalate Resolve
+    connectionId: cx_collection
+    departments:
+      # - New Business
+      # - Key Accounts
+      - Fulfillment
+      # - Procurement
+
+    filter_fields:
+      - name: Region
+        field: region
+
+    elements:
+      - name: Time to Order
+        score: Q1
+        comment: V1
+      - name: Communication
+        score: Q2
+        comment: V2
+      - name: Tech Info
+        score: Q3
+        comment: V3
+      - name: Quotation Accuracy
+        score: Q4
+        comment: V4
+      - name: Follow Up
+        score: Q5
+        comment: V5
+      - name: Availability
+        score: Q6
+        comment: V6
+      - name: Order Completion Time
+        score: Q7
+        comment: V7
+      - name: Ease of Business
+        score: Q11
+        comment: V11
+      - name: Recommendation
+        score: Q12
+        comment: V12
+      - name: Repurchase likelihood
+        score: Q13
+        comment: V13
+      - name: Overall experience
+        score: Q14
+        comment: V14
+      - name: Additional Info
+        score: Q20
+        comment: V20
+        
+    respondent_details_list:
+      _nunjucks:
+        template: |
+          <font style='font-size:14px' >
+            {{ respondent }} <b>|</b> {{ company }} <b>|</b> {{ region }}
+          </font>
+        on:
+          _state: interviews.$
+
+    statuses:
+      - Work in Progress
+      - Assign to Department
+      - Investigation Started
+      - Client Contacted
+      - Awaiting Confirmation
+
+    statusColors:
+      New: '#722ed1'
+      Work in Progress: '#1890ff'
+      Client Contacted: '#13c2c2'
+      Assign to Department: '#7cb305'
+      Escalated: '#faad14'
+      Closed: '#bfbfbf'
+
+    actionColors:
+      Interviewed: '#722ed1'
+      Created: '#722ed1'
+      Changed status to Work in Progress: '#1890ff'
+      Assigned to Department: '#7cb305'
+      Escalated: '#faad14'
+      Flagged: '#f5222d'
+      Removed flag: '#bfbfbf'
+      Commented: '#bfbfbf'
+      Closed: '#52c41a'
+
+    statusIcons:
+      New: PlusCircleTwoTone
+      Escalated: ExclamationCircleOutlined
+      Work in Progress: ToolTwoTone
+      Client Contacted: SoundTwoTone
+      Assign to Department: SwapOutlined
+      Closed: StopOutlined
+
+    actionIcons:
+      Interviewed: PhoneTwoTone
+      Created: PlusCircleTwoTone
+      Changed status to Work in Progress: ToolTwoTone
+      Changed status to Client Contacted: SoundTwoTone
+      Assigned to Department: SwapOutlined
+      Escalated: ExclamationCircleOutlined
+      Flagged: FlagTwoTone
+      Removed flag: FlagTwoTone
+      Commented: MessageTwoTone
+      Closed: StopOutlined

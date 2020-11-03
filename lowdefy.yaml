@@ -17,3 +17,4 @@ pages:
   - _ref: projects/overview.yaml
   - _ref: projects/project-main.yaml
   - _ref: projects/project-data.yaml
+  - _ref: projects/escalate-resolve.yaml

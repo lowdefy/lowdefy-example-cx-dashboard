@@ -15,3 +15,8 @@ links:
     pageId: project-responses
     properties:
       title: Responses
+  - id: escalate-resolve
+    type: MenuLink
+    pageId: escalate-resolve
+    properties:
+      title: Escalate & Resolve

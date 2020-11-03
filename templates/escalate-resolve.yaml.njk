@@ -1,0 +1,2162 @@
+id: {{ page_id }}
+type: PageHeaderMenu
+public: true
+properties:
+  title: {{ dashboard_name }}
+  logoSrc:
+    _global: company_logo
+  header:
+    theme: light
+layout:
+  contentGutter: [8,0]
+actions:
+  onInit:
+    - id: set_departments
+      type: SetState
+      params:
+        min_date:
+          _date: 2020-07-01
+        departments:
+          _var: departments
+        pagination:
+          pageSize: 10
+          skip: 0
+        open_closed_selector: Open
+        flagged_selector: []
+    - id: fetch_init
+      type: Fetch
+      params: init
+    - id: set_init
+      type: SetState
+      params:
+        _get:
+          key: '0'
+          from:
+            _request: init
+    - id: fetch_interviews
+      type: Fetch
+      params:
+        - totals
+        - interviews
+    - id: set_interviews
+      type: SetState
+      params:
+        interviews:
+          _request: interviews
+requests:
+  - id: init
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            published: true
+            department:
+              $in:
+                _state: departments
+            Mnt:
+              $gte:
+                _state: min_date
+        - $group:
+            _id: $Mnt
+            total:
+              $sum: 1
+            financial_year:
+              $first: $financial_year
+{% for item in filter_fields %}
+            {{ item.field }}_list:
+              $addToSet: 
+                $cond:
+                  - $eq:
+                      - $financial_year
+                      - $year:
+                          _date: now
+                  - ${{ item.field }}
+                  - null
+{% endfor %}
+        - $sort:
+            _id: -1
+        - $group:
+            _id: 0
+            total: 
+              $sum: $total
+            max_financial_year:
+              $max: $financial_year
+            months:
+              $push:
+                value: $_id
+                label:
+                  $dateToString:
+                    date: $_id
+                    format: '%Y-%m'
+{% for item in filter_fields %}
+            {{ item.field }}_list:
+              $addToSet: ${{ item.field }}_list
+{% endfor %}
+        - $project:
+            _id: 0
+        # - $addFields:
+            month_to:
+              $arrayElemAt:
+                - $months.value
+                - 0
+            month_from:
+              $arrayElemAt:
+                - $months.value
+                - 2
+{% for item in filter_fields %}
+            {{ item.field }}_list:
+              $filter:
+                input:
+                  $reduce:
+                    input: ${{ item.field }}_list
+                    initialValue: []
+                    in:
+                      $setUnion:
+                        - $$value
+                        - $$this
+                cond:
+                  $ne:
+                    - $$this
+                    - null
+{% endfor %}
+
+  - id: interviews
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - _if:
+            test:
+              _eq:
+                - _state: search_input
+                - null
+            then:
+              $match: {}
+            else:
+                $match:
+                  $text:
+                    $search:
+                      _nunjucks: "{% raw %}\"{{ search_input }}\"{% endraw %}"
+        - $addFields:
+            score:
+              _if:
+                test:
+                  _eq:
+                    - _state: search_input
+                    - null
+                then:
+                  null
+                else:
+                  $meta: textScore
+        - $match:
+            published: true
+            department:
+              $in:
+                _state: departments
+            Mnt:
+              $gte:
+                _state: min_date
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $financial_year
+                    - $subtract:
+                        - _state: max_financial_year
+                        - 3
+{% for item in filter_fields %}
+                - $cond:
+                    - $eq:
+                        - _state: {{ item.field }}_selector
+                        - null
+                    - true
+                    - $eq:
+                        - ${{ item.field }}
+                        - _state: {{ item.field }}_selector
+{% endfor %}
+                - $eq:
+                    - $status
+                    - $ifNull:
+                        - _state: status_selector
+                        - $status
+                - $eq:
+                    - $ifNull:
+                        - $assigned_department
+                        - $department
+                    - $ifNull:
+                        - _state: department_selector
+                        - $ifNull:
+                            - $assigned_department
+                            - $department
+                - $cond:
+                    - $eq:
+                        - _state: open_closed_selector
+                        - Closed
+                    - $eq:
+                        - $status
+                        - Closed
+                    - $ne:
+                        - $status
+                        - Closed
+                - $cond:
+                    - $in:
+                        - Only flagged
+                        - _state: flagged_selector
+                    - $flagged
+                    - true
+        - $addFields:
+            score:
+              _if:
+                test:
+                  _eq:
+                    - _state: search_input
+                    - null
+                then: 1
+                else:
+                  $meta: textScore
+            promoter_color:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - $promoter
+                        - Promoter
+                    then: '#237804'
+                  - case:
+                      $eq:
+                        - $promoter
+                        - Detractor
+                    then: '#cf1322'
+                default: '#595959'
+            csi:
+              $round:
+                - $csi
+                - 1
+            elements:
+{% for item in elements %}
+              - name: {{ item.name }}
+                score: { $ifNull: [ ${{ item.score }}, null ] }
+                comment: { $ifNull: [ ${{ item.comment }}, null ] }
+{% endfor %}
+        - $project:
+            Mnt: 1
+            ID: 1
+            assigned_department:
+              $ifNull:
+                - $assigned_department
+                - $department
+            score: 1
+            csi: 1
+            promoter: 1
+            promoter_color: 1
+            company: 1
+            agent: 1
+            region: 1
+            respondent: 1
+            flagged: 1
+            status:
+              $ifNull:
+                - $status
+                - New
+        - $project:
+            model_history: 0
+            fieldwork_review: 0
+        - $sort:
+            score: 1
+            Mnt: -1
+        - $skip:
+            _state: pagination.skip
+        - $limit:
+            _state: pagination.pageSize
+  - id: totals
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - _if:
+            test:
+              _eq:
+                - _state: search_input
+                - null
+            then:
+              $match: {}
+            else:
+                $match:
+                  $text:
+                    $search:
+                      _nunjucks: "{% raw %}\"{{ search_input }}\"{% endraw %}"
+        - $match:
+            published: true
+            department:
+              $in:
+                _state: departments
+            Mnt:
+              $gte:
+                _state: min_date
+        - $match:
+            $expr:
+              $and:
+                - $gte:
+                    - $financial_year
+                    - $subtract:
+                        - _state: max_financial_year
+                        - 3
+{% for item in filter_fields %}
+                - $cond:
+                    - $eq:
+                        - _state: {{ item.field }}_selector
+                        - null
+                    - true
+                    - $eq:
+                        - ${{ item.field }}
+                        - _state: {{ item.field }}_selector
+{% endfor %}
+                - $eq:
+                    - $status
+                    - $ifNull:
+                        - _state: status_selector
+                        - $status
+                - $eq:
+                    - $ifNull:
+                        - $assigned_department
+                        - $department
+                    - $ifNull:
+                        - _state: department_selector
+                        - $ifNull:
+                            - $assigned_department
+                            - $department
+                - $cond:
+                    - $eq:
+                        - _state: open_closed_selector
+                        - Closed
+                    - $eq:
+                        - $status
+                        - Closed
+                    - $ne:
+                        - $status
+                        - Closed
+                - $cond:
+                    - $in:
+                        - Only flagged
+                        - _state: flagged_selector
+                    - $flagged
+                    - true
+        - $group:
+            _id: 0
+            total:
+              $sum: 1
+  - id: fetch_selected
+    type: MongoDBAggregation
+    connectionId: {{ connectionId }}
+    properties:
+      pipeline:
+        - $match:
+            _id:
+              _state: selected_id
+        - $addFields:
+            promoter_color:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - $promoter
+                        - Promoter
+                    then: '#237804'
+                  - case:
+                      $eq:
+                        - $promoter
+                        - Detractor
+                    then: '#cf1322'
+                default: '#595959'
+            csi:
+              $round:
+                - $csi
+                - 1
+            elements:
+{% for item in elements %}
+              - name: {{ item.name }}
+                score: { $ifNull: [ ${{ item.score }}, null ] }
+                comment: { $ifNull: [ ${{ item.comment }}, null ] }
+{% endfor %}
+        - $project:
+            Mnt: 1
+            status:
+              $ifNull:
+                - $status
+                - New
+            assigned_department:
+              $ifNull:
+                - $assigned_department
+                - $department
+            close_status: 1
+            closed: 1
+            flagged: 1
+            company: 1
+            region: 1
+            agent: 1
+            respondent: 1
+            department: 1
+            transaction_number: 1
+            serial_number: 1
+            ID: 1
+            csi: 1
+            promoter: 1
+            promoter_color: 1
+            elements: 1
+            phone: 1
+            interaction_date: 1
+            er_history:
+              $reverseArray: 
+                $concatArrays:
+                  - - timestamp: $interview_date
+                      action: Interviewed
+                  - $ifNull:
+                      - $er_history
+                      - []
+        - $addFields:
+            er_history:
+              $slice:
+                - $er_history
+                - 2
+            er_history_short:
+              $slice:
+                - $er_history
+                - 2
+            er_history_full: $er_history
+
+mutations:
+  - id: set_flagged
+    type: MongoDBUpdateOne
+    connectionId: {{ connectionId }}
+    properties:
+      filter:
+        _id:
+          _state: selected_id
+      update:
+        - $set:
+            flagged:
+              _not:
+                _state: selected.flagged
+            er_history:
+              $concatArrays:
+                - $ifNull:
+                    - $er_history
+                    - []
+                - - action:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: selected.flagged
+                            - true
+                        then: Removed flag
+                        else: Flagged
+                    status: $status
+                    timestamp:
+                      _date: now
+                    user:
+                      name:
+                        _user: name
+                      id:
+                        _user: id
+  - id: close_ticket
+    type: MongoDBUpdateOne
+    connectionId: {{ connectionId }}
+    properties:
+      filter:
+        _id:
+          _state: selected_id
+      update:
+        - $set:
+            updated_date:
+              _date: now
+            status: Closed
+            closed_status:
+              _state: selected.close_status_selector
+            er_history:
+              $concatArrays:
+                - $ifNull:
+                    - $er_history
+                    - []
+                - - action:
+                      _nunjucks: "{% raw %}Closed{% endraw %}"
+                    extra:
+                      _nunjucks: "{% raw %}{{ selected.close_status_selector }}{% endraw %}"
+                    status: Closed
+                    closed_status:
+                      _state: selected.close_status_selector
+                    comment:
+                      _state: selected.close_comment
+                    timestamp:
+                      _date: now
+                    user:
+                      name:
+                        _user: name
+                      id:
+                        _user: id
+  - id: change_status_on_ticket
+    type: MongoDBUpdateOne
+    connectionId: {{ connectionId }}
+    properties:
+      filter:
+        _id:
+          _state: selected_id
+      update:
+        - $set:
+            updated_date:
+              _date: now
+            status:
+              _state: selected.change_status_selector
+            assigned_department:
+              $ifNull:
+                - _state: selected.assigned_department_selector
+                - $assigned_department
+            work_in_progress_date:
+              $ifNull:
+                - _state: selected.work_in_progress_date
+                - $work_in_progress_date
+            er_history:
+              $concatArrays:
+                - $ifNull:
+                    - $er_history
+                    - []
+                # - - action:
+                #       _nunjucks: Changed status to {{ selected.change_status_selector }}
+                - - action:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: selected.change_status_selector
+                            - Assign to Department
+                        then:
+                          _nunjucks: "{% raw %}Assigned to Department{% endraw %}"
+                        else:
+                          _nunjucks: "{% raw %}Changed status to {{ selected.change_status_selector }}{% endraw %}"
+                    extra:
+                      _if:
+                        test:
+                          _eq:
+                            - _state: selected.change_status_selector
+                            - Assign to Department
+                        then:
+                          _nunjucks: "{% raw %}{{ selected.assigned_department_selector }}{% endraw %}"
+                        else:
+                          _if:
+                            test:
+                              _eq:
+                                - _state: selected.change_status_selector
+                                - Work in Progress
+                            then:
+                              _nunjucks: "{% raw %}(completion date {{ selected.work_in_progress_date | date('DD-MM-YYYY') }}){% endraw %}"
+                            else: null
+                    status:
+                      _state: selected.change_status_selector
+                    assigned_department:
+                      _state: selected.assigned_department_selector
+                    work_in_progress_date:
+                      _state: selected.work_in_progress_date
+                    comment:
+                      _state: selected.change_status_comment
+                    timestamp:
+                      _date: now
+                    user:
+                      name:
+                        _user: name
+                      id:
+                        _user: id
+  - id: comment_on_ticket
+    type: MongoDBUpdateOne
+    connectionId: {{ connectionId }}
+    properties:
+      filter:
+        _id:
+          _state: selected_id
+      update:
+        - $set:
+            updated_date:
+              _date: now
+            er_history:
+              $concatArrays:
+                - $ifNull:
+                    - $er_history
+                    - []
+                - - action: Commented
+                    status: $status
+                    comment:
+                      _state: selected.comment_input
+                    timestamp:
+                      _date: now
+                    user:
+                      name:
+                        _user: name
+                      id:
+                        _user: id
+  - id: escalate_ticket
+    type: MongoDBUpdateOne
+    connectionId: {{ connectionId }}
+    properties:
+      filter:
+        _id:
+          _state: selected_id
+      update:
+        - $set:
+            updated_date:
+              _date: now
+            status: Escalated
+            er_history:
+              $concatArrays:
+                - $ifNull:
+                    - $er_history
+                    - []
+                - - action: Escalated
+                    status: Escalated
+                    comment:
+                      _state: selected.escalate_comment
+                    timestamp:
+                      _date: now
+                    user:
+                      name:
+                        _user: name
+                      id:
+                        _user: id
+
+blocks:
+  - id: left_box
+    type: Box
+    layout:
+      contentGutter: 8
+      span: 10
+    blocks:
+      - id: interviews_title
+        type: Markdown
+        properties:
+          content: "##### Interviews"
+      - id: search_box
+        type: Box
+        layout:
+          flex: 1 1 auto
+          contentGutter: [6,0]
+        blocks:
+          - id: search_input
+            type: TextInput
+            layout:
+              flex: 1 1 auto
+            properties:
+              placeholder: Search
+              label:
+                disabled: true
+            actions:
+              onPressEnter:
+                - id: fetch_interviews
+                  type: Fetch
+                  params:
+                    - totals
+                    - interviews
+                - id: set_interviews
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+          - id: search_button
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Search
+              icon: SearchOutlined
+            actions:
+              onClick:
+                - id: fetch_interviews
+                  type: Fetch
+                  params:
+                    - totals
+                    - interviews
+                - id: set_interviews
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+          - id: clear_button
+            type: Button
+            layout:
+              flex: 0 1 auto
+            properties:
+              title: Reset
+              icon: ReloadOutlined
+              type: default
+            actions:
+              onClick:
+                - id: reset
+                  type: Reset
+
+      - id: status_selector_box
+        type: Box
+        layout:
+          contentGutter: 6
+        blocks:
+          - id: status_selector
+            type: Selector
+            layout:
+              span: 6
+            properties:
+              label:
+                disabled: true
+              placeholder: Status
+              options:
+                _var: statuses
+              size: small
+            actions:
+              onChange:
+                - id: reset_selected
+                  type: SetState
+                  params:
+                    selected: {}
+                - id: fetch
+                  type: Fetch
+                  params:
+                    - totals
+                    - interviews
+                - id: set_fetched_tickets
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+          - id: department_selector
+            type: Selector
+            layout:
+              span: 4
+            properties:
+              label:
+                disabled: true
+              placeholder: Department
+              options:
+                _var: departments
+              size: small
+            actions:
+              onChange:
+                - id: reset_selected
+                  type: SetState
+                  params:
+                    selected: {}
+                - id: fetch
+                  type: Fetch
+                  params:
+                    - interviews
+                - id: set_fetched_tickets
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+{% for item in filter_fields %}
+          - id: {{ item.field }}_selector
+            type: Selector
+            layout:
+              span: 5
+            properties:
+              label:
+                disabled: true
+              placeholder: {{ item.name }}
+              size: small
+              showSearch: true
+              options:
+                _state: {{ item.field }}_list
+            actions:
+              onChange:
+                - id: fetch_interviews
+                  type: Fetch
+                  params:
+                    - totals
+                    - interviews
+                - id: set_interviews
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+{% endfor %}
+          - id: open_closed_selector
+            type: Selector
+            layout:
+              span: 4
+            properties:
+              allowClear: false
+              label:
+                disabled: true
+              options:
+                - Open
+                - Closed
+              size:
+                small
+            actions:
+              onChange:
+                - id: reset_selected
+                  type: SetState
+                  params:
+                    selected: {}
+                - id: fetch
+                  type: Fetch
+                  params:
+                    - totals
+                    - interviews
+                - id: set_fetched_tickets
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+          - id: flagged_selector
+            type: CheckboxSelector
+            layout:
+              span: 5
+            properties:
+              label:
+                disabled: true
+              options:
+                - Only flagged
+            actions:
+              onChange:
+                - id: reset_selected
+                  type: SetState
+                  params:
+                    selected: {}
+                - id: fetch
+                  type: Fetch
+                  params:
+                    - totals
+                    - interviews
+                - id: set_fetched_tickets
+                  type: SetState
+                  params:
+                    interviews:
+                      _request: interviews
+      
+      - id: interviews_card
+        type: Card
+        layout:
+          contentGutter: 16
+        style:
+          marginTop: 4
+          padding: 0
+        blocks:
+          - id: interviews
+            type: List
+            blocks:
+              - id: interviews.$.box
+                type: Box
+                style:
+                  padding: 10
+                  borderRadius: 3
+                  background:
+                    _if:
+                      test:
+                        _eq:
+                          - _state: interviews.$._id
+                          - _state: selected._id
+                      then: "#f0f0f0"
+                      else: "#ffff"
+                actions:
+                  onClick:
+                    - id: set_selected_id
+                      type: SetState
+                      params:
+                        selected_id:
+                          _state: interviews.$._id
+                    - id: fetch_selected
+                      type: Fetch
+                      params:
+                        - fetch_selected
+                    - id: scroll_top
+                      type: ScrollTo
+                      params:
+                        top: 0
+                        behavior: smooth
+                    - id: set_selected
+                      type: SetState
+                      params:
+                        selected:
+                          _get:
+                            key: '0'
+                            from:
+                              _request: fetch_selected
+                blocks:
+                  - id: interviews.$.status_box
+                    type: Box
+                    layout:
+                      contentAlign: middle
+                      contentGutter: 16
+                    blocks:
+                      - id: interviews.$.status_icon
+                        type: Icon
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          size: 14
+                          color:
+                            _get:
+                              from:
+                                _var: statusColors
+                              key:
+                                _state: interviews.$.status
+                          name:
+                            _get:
+                              from:
+                                _var: statusIcons
+                              key:
+                                _state: interviews.$.status
+                      - id: interviews.$.status
+                        type: Html
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <font style='font-size:14px' >
+                                  {{ status }}
+                                </font>
+                                {% endraw %}
+                              on:
+                                _state: interviews.$
+                      - id: interviews.$.assigned_department
+                        type: Html
+                        layout:
+                          flex: 1 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <font style='font-size:14px' >
+                                  <b>{{ assigned_department }} | {{ respondent }}</b>
+                                </font>
+                                {% endraw %}
+                              on:
+                                _state: interviews.$
+                      - id: interviews.$.flag
+                        type: Icon
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          size: 12
+                          name: FlagTwoTone
+                          color:
+                            _if:
+                              test:
+                                _eq:
+                                  - _state: interviews.$.flagged
+                                  - true
+                              then: '#f5222d'
+                              else: '#bfbfbf'
+                  - id: interviews.$.header_box
+                    type: Box
+                    layout:
+                      contentAlign: middle
+                      contentGutter: 8
+                    blocks:
+                      - id: interviews.$.Mnt
+                        type: Html
+                        layout:
+                          span: 4
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <font style='font-size:14px' >
+                                  <b>{{ Mnt | date("MMM YYYY") }}</b>
+                                </font>
+                                {% endraw %}
+                              on:
+                                _state: interviews.$
+                      - id: interviews.$.promoter
+                        type: Html
+                        layout:
+                          span: 6
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                NPS: <font style='font-size:14px; color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
+                                {% endraw %}
+                              on:
+                                _state: interviews.$
+                      - id: csi_box
+                        type: Box
+                        layout:
+                          span: 14
+                          contentGutter: [8,0]
+                        blocks:
+                          - id: csi_label
+                            type: Html
+                            layout:
+                              size: 40
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    {% raw %}
+                                    <font style='font-size:14px;' >CSI:</font>
+                                    {% endraw %}
+                                  on:
+                                    _state: interviews.$
+                          - id: interviews.$.csi
+                            type: Progress
+                            layout:
+                              flex: 2 1 auto
+                            properties:
+                              showInfo: false
+                              status: normal
+                              percent:
+                                _state: interviews.$.csi
+                              strokeColor:
+                                _mql_expr:
+                                  expr:
+                                    $switch:
+                                      branches:
+                                        - case:
+                                            $gte:
+                                              - $csi
+                                              - 80
+                                          then: '#52c41a'
+                                        - case:
+                                            $lt:
+                                              - $csi
+                                              - 70
+                                          then: '#f5222d'
+                                      default: '#8c8c8c'
+                                  on:
+                                    _state: interviews.$
+                          - id: interviews.$.csi_score
+                            type: Html
+                            layout:
+                              flex: 0 1 auto
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    {% raw %}
+                                    <font style='font-size:14px;' ><b>{{ csi | round(1) }}</b></font>
+                                    {% endraw %}
+                                  on:
+                                    _state: interviews.$
+                      - id: interviews.$.respondent
+                        type: Html
+                        properties:
+                          html:
+                            _var: respondent_details_list
+              - id: interviews.$.divider
+                type: Divider
+                style:
+                  padding: 0
+                  margin: 0
+                visible:
+                  _not:
+                    _eq:
+                      - _state: interviews.$._id
+                      - _mql_expr:
+                          $arrayElemAt:
+                            - $interviews._id
+                            - -1
+
+          - id: box_pagination
+            type: Box
+            layout:
+              contentJustify: end
+            blocks:
+              - id: pagination
+                type: Pagination
+                layout:
+                  size: auto
+                properties:
+                  defaultCurrent: 1
+                  showSizeChanger: true
+                  pageSizeOptions: [5, 10, 20, 50, 100]
+                  responsive: true
+                  total:
+                    _get:
+                      key: 0.total
+                      from:
+                        _request: totals
+                actions:
+                  onShowSizeChange:
+                    - id: fetch_interviews
+                      type: Fetch
+                      params:
+                        - totals
+                        - interviews
+                    - id: scroll_top
+                      type: ScrollTo
+                      params:
+                        top: 0
+                    - id: set_results
+                      type: SetState
+                      params:
+                        interviews:
+                          _request: interviews
+                  onChange:
+                    - id: fetch_interviews
+                      type: Fetch
+                      params:
+                        - totals
+                        - interviews
+                    - id: scroll_top
+                      type: ScrollTo
+                      params:
+                        top: 0
+                    - id: set_results
+                      type: SetState
+                      params:
+                        interviews:
+                          _request: interviews
+  
+  - id: selected_box
+    type: Box
+    layout:
+      span: 14
+      contentGutter: 8
+    blocks:
+      - id: selected.title
+        type: Markdown
+        properties:
+          content: "##### Selected"
+      - id: selected_card
+        type: Card
+        blocks:
+          - id: selected.non_selected
+            type: Result
+            visible:
+              _not:
+                _mql_test:
+                  selected._id:
+                    $exists: true
+            properties:
+              icon:
+                name: ContainerTwoTone
+                color: '#bfbfbf'
+              subTitle: No interview selected
+          - id: selected.visible_box
+            type: Box
+            visible:
+              _mql_test:
+                selected._id:
+                  $exists: true
+            layout:
+              contentGutter: 8
+              contentJustify: center
+            blocks:
+              - id: selected.header_affix
+                type: Affix
+                blocks:
+                  - id: selected.header_box
+                    type: Box
+                    style:
+                      background: "#fff"
+                      paddingTop: 16
+                    layout:
+                      contentAlign: middle
+                      contentGutter: [16,0]
+                    blocks:
+                      - id: selected.status_icon
+                        type: Icon
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          size: 32
+                          color:
+                            _get:
+                              from:
+                                _var: statusColors
+                              key:
+                                _state: selected.status
+                          name:
+                            _get:
+                              from:
+                                _var: statusIcons
+                              key:
+                                _state: selected.status
+                      - id: selected.status
+                        type: Html
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <span style='font-size:16px'>
+                                  {{ status }}
+                                </span>
+                                {% endraw %}
+                              on:
+                                _state: selected
+                      - id: selected.ticket_id
+                        type: Html
+                        layout:
+                          flex: 1 1 auto
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                {% raw %}
+                                <font style='font-size:20px' >
+                                  <b>{{ respondent }}</b>
+                                </font>
+                                {% endraw %}
+                              on:
+                                _state: selected
+                      - id: selected.flag
+                        type: Icon
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          size: 32
+                          name: FlagTwoTone
+                          color:
+                            _if:
+                              test:
+                                _eq:
+                                  - _state: selected.flagged
+                                  - true
+                              then: '#f5222d'
+                              else: '#bfbfbf'
+                        actions:
+                          onClick:
+                            - id: set_flagged
+                              type: Mutate
+                              params: set_flagged
+                            - id: fetch
+                              type: Fetch
+                            - id: set_state
+                              type: SetState
+                              params:
+                                selected:
+                                  _get:
+                                    key: '0'
+                                    from:
+                                      _request: fetch_selected
+                                interviews:
+                                  _request: interviews
+                  - id: selected.actions_buttons_box
+                    type: Box
+                    style:
+                      background: "#fff"
+                      paddingTop: 16
+                    layout:
+                      contentGutter: [8,0]
+                    visible:
+                      _state: actions_button_visible
+                    blocks:
+                      - id: selected.change_status_button
+                        type: Button
+                        layout:
+                          span: 6
+                          sm:
+                            span: 12
+                        properties:
+                          title: Change Status
+                          block: true
+                          type: default
+                          icon: RetweetOutlined
+                        actions:
+                          onClick:
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: comment_action_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: escalate_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: close_action_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_visible
+                              type: CallMethod
+                              params:
+                                blockId: change_status_drawer
+                                method: toggleOpen
+                      - id: selected.comment_button
+                        type: Button
+                        layout:
+                          span: 6
+                          sm:
+                            span: 12
+                        properties:
+                          title: Comment
+                          block: true
+                          type: default
+                          icon: MessageOutlined
+                        actions:
+                          onClick:
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: change_status_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: escalate_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: close_action_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_visible
+                              type: CallMethod
+                              params:
+                                blockId: comment_action_drawer
+                                method: toggleOpen
+                      - id: selected.escalate_button
+                        type: Button
+                        layout:
+                          span: 6
+                          sm:
+                            span: 12
+                        properties:
+                          title: Escalate
+                          block: true
+                          type: default
+                          icon: ExclamationCircleOutlined
+                        actions:
+                          onClick:
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: comment_action_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: change_status_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: close_action_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_visible
+                              type: CallMethod
+                              params:
+                                blockId: escalate_drawer
+                                method: toggleOpen
+                      - id: selected.close_button
+                        type: Button
+                        layout:
+                          span: 6
+                          sm:
+                            span: 12
+                        properties:
+                          title: Close
+                          block: true
+                          type: default
+                          icon: StopOutlined
+                        actions:
+                          onClick:
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: comment_action_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: change_status_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_invisible
+                              type: CallMethod
+                              params:
+                                blockId: escalate_drawer
+                                method: setOpen
+                                args:
+                                  open: false
+                            - id: set_visible
+                              type: CallMethod
+                              params:
+                                blockId: close_action_drawer
+                                method: toggleOpen
+                      
+                      - id: div
+                        type: Html
+                        style:
+                          margin: 0
+                          padding: 0
+                        properties:
+                          html: "<hr/>"
+              - id: selected.content_box
+                type: Box
+                blocks:
+                  - id: selected.er_history_box
+                    type: Box
+                    layout:
+                      contentGutter: 8
+                      contentJustify: center
+                    blocks:
+                      - id: er_history_title
+                        type: Markdown
+                        layout:
+                          flex: 0 1 auto
+                        properties:
+                          renderHtml: true
+                          content: "#### Action History"
+                      - id: er_history_more_button
+                        type: Button
+                        layout:
+                          flex: 1 1 auto
+                        visible:
+                          _mql_expr:
+                            $cond:
+                              - $gt:
+                                  - $size:
+                                      _state: selected.er_history_full
+                                  - 2
+                              - true
+                              - false
+                        properties:
+                          title:
+                            _if:
+                              test:
+                                _not:
+                                  _state: show_full_history
+                              then: Show More
+                              else: Show Less
+                          type: default
+                          size: small
+                          hideActionLoading: true
+                        actions:
+                          onClick:
+                            - id: set_full_history
+                              type: SetState
+                              skip:
+                                _not:
+                                  _not:
+                                    _state: show_full_history
+                              params:
+                                selected.er_history:
+                                  _state: selected.er_history_full
+                            - id: set_short_history
+                              type: SetState
+                              skip:
+                                _not:
+                                  _state: show_full_history
+                              params:
+                                selected.er_history:
+                                  _state: selected.er_history_short
+                            - id: set_state
+                              type: SetState
+                              params:
+                                show_full_history:
+                                  _not:
+                                    _state: show_full_history
+                      - id: selected.er_history
+                        type: Timeline
+                        properties:
+                          data:
+                            _mql_aggregate:
+                              pipeline:
+                                - $addFields:
+                                    icons:
+                                      $objectToArray:
+                                        _var: actionIcons
+                                    colors:
+                                      $objectToArray:
+                                        _var: actionColors
+                                - $project:
+                                    icon:
+                                      name:
+                                        $arrayElemAt:
+                                          - $icons.v
+                                          - $indexOfArray:
+                                              - $icons.k
+                                              - $action
+                                      color:
+                                        $arrayElemAt:
+                                          - $colors.v
+                                          - $indexOfArray:
+                                              - $colors.k
+                                              - $action
+                              on:
+                                _state: selected.er_history
+                        blocks:
+                          - id: selected.er_history.$.description
+                            type: Html
+                            style:
+                              fontSize: 12
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    {% raw %}
+                                    <h3> {{ action }} {{ extra }}</h3>
+                                    <p style="font-size: 10px;" ><i>{{ timestamp | date("lll") }} {{ user.name }}</i></p>
+                                    <p>{{ comment }}</p>
+                                    {% endraw %}
+                                  on:
+                                    _state: selected.er_history.$
+                  
+                  - id: selected.scores_box
+                    type: Box
+                    layout:
+                      contentJustify: center
+                      contentGutter: [32,8]
+                    blocks:
+                      - id: selected.scores_title
+                        type: Markdown
+                        properties:
+                          content: "#### Respondent Details"
+                      - id: csi_box
+                        type: Box
+                        layout:
+                          contentGutter: [8,0]
+                          span: 12
+                        blocks:
+                          - id: selected.csi_title
+                            type: Markdown
+                            properties:
+                              content: "###### CSI"
+                          - id: selected.csi
+                            type: Progress
+                            layout:
+                              flex: 2 1 auto
+                            properties:
+                              showInfo: false
+                              status: normal
+                              percent:
+                                _state: selected.csi
+                              strokeColor:
+                                from: '#faad14'
+                                to:
+                                  _mql_expr:
+                                    expr:
+                                      $switch:
+                                        branches:
+                                          - case:
+                                              $lt:
+                                                - $csi
+                                                - 20
+                                            then: '#d7b441'
+                                          - case:
+                                              $lt:
+                                                - $csi
+                                                - 40
+                                            then: '#c6b440'
+                                          - case:
+                                              $lt:
+                                                - $csi
+                                                - 50
+                                            then: '#b6b840'
+                                          - case:
+                                              $lt:
+                                                - $csi
+                                                - 60
+                                            then: '#b0b840'
+                                          - case:
+                                              $lt:
+                                                - $csi
+                                                - 75
+                                            then: '#a0ba40'
+                                          - case:
+                                              $lt:
+                                                - $csi
+                                                - 85
+                                            then: '#93bc40'
+                                        default: '#52c41a'
+                                    on:
+                                      _state: selected
+                          - id: selected.csi_score
+                            type: Html
+                            layout:
+                              flex: 0 1 auto
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    {% raw %}
+                                    <font style='font-size:14px;' ><b>{{ csi | round(1) }}</b></font>
+                                    {% endraw %}
+                                  on:
+                                    _state: selected
+                      - id: nps_box
+                        type: Box
+                        layout:
+                          contentGutter: [8,0]
+                          span: 12
+                        blocks:
+                          - id: selected.nps_title
+                            type: Markdown
+                            properties:
+                              renderHtml: true
+                              content: "###### NPS Status"
+                          - id: selected.nps
+                            type: Html
+                            layout:
+                              flex: 0 1 auto
+                            properties:
+                              renderHtml: true
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    {% raw %}
+                                    <font style='color: {{ promoter_color }};' ><b>{{ promoter }}</b></font>
+                                    {% endraw %}
+                                  on:
+                                    _state: selected
+                          - id: selected.nps_icon
+                            type: Icon
+                            layout:
+                              flex: 1 1 auto
+                            properties:
+                              size: 18
+                              name:
+                                  _mql_expr:
+                                    expr:
+                                      $switch:
+                                        branches:
+                                          - case:
+                                              $eq:
+                                                - $promoter
+                                                - Promoter
+                                            then: SmileOutlined
+                                          - case:
+                                              $eq:
+                                                - $promoter
+                                                - Detractor
+                                            then: FrownOutlined
+                                          - case:
+                                              $eq:
+                                                - $promoter
+                                                - Indifferent
+                                            then: MehOutlined
+                                        default: null
+                                    on:
+                                      _state: selected
+                              color:
+                                  _mql_expr:
+                                    expr:
+                                      $switch:
+                                        branches:
+                                          - case:
+                                              $eq:
+                                                - $promoter
+                                                - Promoter
+                                            then: "#237804"
+                                          - case:
+                                              $eq:
+                                                - $promoter
+                                                - Detractor
+                                            then: "#cf1322"
+                                          - case:
+                                              $eq:
+                                                - $promoter
+                                                - Indifferent
+                                            then: "#595959"
+                                        default: null
+                                    on:
+                                      _state: selected
+
+                  - id: selected.respondent_box
+                    type: Box
+                    layout:
+                      contentGutter: 8
+                    blocks:
+                      - id: selected.respondent_details
+                        type: Descriptions
+                        properties:
+                          bordered: true
+                          column: { xs: 1, sm: 1, md: 3 }
+                          size: small
+                          items:
+                            - label: Month
+                              value:
+                                _mql_expr:
+                                  on:
+                                    _state: selected
+                                  expr:
+                                    $dateToString:
+                                      date: $Mnt
+                                      format: "%Y-%m-%d"
+                            - label: Name
+                              span: 2
+                              value:
+                                _state: selected.respondent
+                            - label: Phone
+                              value:
+                                _state: selected.phone
+                            - label: Company
+                              span: 2
+                              value:
+                                _state: selected.company
+                            - label: Interaction Date
+                              value:
+                                _mql_expr:
+                                  on:
+                                    _state: selected
+                                  expr:
+                                    $dateToString:
+                                      date: $interaction_date
+                                      format: "%Y-%m-%d"
+                            - label: Region
+                              value:
+                                _state: selected.region
+                            - label: Agent
+                              value:
+                                _state: selected.agent
+                            - label: Serial Number
+                              value:
+                                _state: selected.serial_number
+                            - label: Transaction Number
+                              span: 2
+                              value:
+                                _state: selected.transaction_number
+                            - label: Assigned Department
+                              value:
+                                _state: selected.assigned_department
+                            - label: Department
+                              value:
+                                _state: selected.department
+                  
+                  - id: selected.interview_box
+                    type: Box
+                    layout:
+                      contentGutter: 8
+                    blocks:
+                      - id: interview_title
+                        type: Markdown
+                        properties:
+                          renderHtml: true
+                          content: "#### Responses"
+                      - id: selected.elements
+                        type: List
+                        layout:
+                          contentGutter: 8
+                        blocks:
+                          - id: selected.elements.$.box
+                            type: Box
+                            layout:
+                              contentGutter: [8,0]
+                            blocks:
+                              - id: selected.elements.$.score
+                                type: Avatar
+                                layout:
+                                  size: auto
+                                properties:
+                                  size: small
+                                  content:
+                                    _state: selected.elements.$.score
+                                  color:
+                                    _mql_expr:
+                                      expr:
+                                        $switch:
+                                          branches:
+                                            - case:
+                                                $gte:
+                                                  - $score
+                                                  - 9
+                                              then: '#52c41a'
+                                            - case:
+                                                $lte:
+                                                  - $score
+                                                  - 6
+                                              then: '#f5222d'
+                                          default: '#8c8c8c'
+                                      on:
+                                        _state: selected.elements.$
+                              - id: selected.elements.$.name
+                                type: Html
+                                layout:
+                                  size: auto
+                                properties:
+                                  html:
+                                    _nunjucks:
+                                      template: |
+                                        {% raw %}
+                                        <font style='font-size:12px;' ><b>{{ name }}</b></font>
+                                        {% endraw %}
+                                      on:
+                                        _state: selected.elements.$
+                              - id: selected.elements.$.comment
+                                type: Html
+                                properties:
+                                  html:
+                                    _nunjucks:
+                                      template: |
+                                        {% raw %}
+                                        <font style='font-size:12px;' >{{ comment }}</font>
+                                        {% endraw %}
+                                      on:
+                                        _state: selected.elements.$
+
+
+  - id: change_status_drawer
+    type: Drawer
+    layout:
+      contentGutter: 8
+    properties:
+      placement: left
+      width: 40%
+      mask: false
+      maskClosable: false
+    blocks:
+      - id: selected.change_status_title
+        type: Markdown
+        properties:
+          content: "#### Change Status"
+      - id: selected.change_status_selector
+        type: Selector
+        layout:
+          span: 12
+          sm:
+            span: 12
+        required: true
+        properties:
+          title: New Status
+          options:
+            _var: statuses
+      - id: selected.work_in_progress_date
+        type: DateSelector
+        layout:
+          span: 12
+          sm:
+            span: 12
+        required: true
+        visible:
+          _eq:
+            - _state: selected.change_status_selector
+            - Work in Progress
+        properties:
+          title: Est. Completion Time
+      - id: selected.assigned_department_selector
+        type: Selector
+        layout:
+          span: 12
+          sm:
+            span: 12
+        required: true
+        visible:
+          _eq:
+            - _state: selected.change_status_selector
+            - Assign to Department
+        properties:
+          title: Department
+          options:
+            _var: departments
+      - id: selected.change_status_comment
+        type: TextArea
+        properties:
+          title: Comment
+      - id: selected.back_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Back
+          type: default
+          hideActionLoading: true
+        actions:
+          onClick:
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: change_status_drawer
+                method: setOpen
+                args:
+                  open: false
+      - id: selected.change_status_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Change Status
+        actions:
+          onClick:
+            - id: validate_status
+              type: Validate
+              errorMessage: A status is required.
+              params: selected.change_status_selector
+            - id: validate_department
+              type: Validate
+              errorMessage: A department is required.
+              params: selected.assigned_department_selector
+            - id: change_status_on_ticket
+              type: Mutate
+              params: change_status_on_ticket
+            - id: fetch
+              type: Fetch
+            - id: set_state
+              type: SetState
+              params:
+                selected:
+                  _get:
+                    key: '0'
+                    from:
+                      _request: fetch_selected
+                interviews:
+                  _request: interviews
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: escalate_drawer
+                method: setOpen
+                args:
+                  open: false
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: change_status_drawer
+                method: setOpen
+                args:
+                  open: false
+  
+  - id: comment_action_drawer
+    type: Drawer
+    layout:
+      contentGutter: 8
+    properties:
+      placement: left
+      width: 40%
+      mask: false
+      maskClosable: false
+    blocks:
+      - id: selected.comment_action_title
+        type: Markdown
+        properties:
+          content: "#### Comment"
+      - id: selected.comment_input
+        type: TextArea
+        required: true
+        properties:
+          label:
+            disabled: true
+      - id: selected.back_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Back
+          type: default
+          hideActionLoading: true
+        actions:
+          onClick:
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: comment_action_drawer
+                method: setOpen
+                args:
+                  open: false
+      - id: selected.comment_action_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Save
+        actions:
+          onClick:
+            - id: validate
+              type: Validate
+              errorMessage: A comment is required.
+              params: selected.comment_input
+            - id: comment_on_ticket
+              type: Mutate
+              params: comment_on_ticket
+            - id: fetch
+              type: Fetch
+            - id: set_state
+              type: SetState
+              params:
+                selected:
+                  _get:
+                    key: '0'
+                    from:
+                      _request: fetch_selected
+                interviews:
+                  _request: interviews
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: comment_action_drawer
+                method: setOpen
+                args:
+                  open: false
+  
+  - id: escalate_drawer
+    type: Drawer
+    layout:
+      contentGutter: 8
+    properties:
+      placement: left
+      width: 40%
+      mask: false
+      maskClosable: false
+    blocks:
+      - id: selected.escalate_title
+        type: Markdown
+        properties:
+          content: "#### Escalate issue"
+      - id: selected.escalate_comment
+        type: TextArea
+        required: true
+        properties:
+          title: Comment
+      - id: selected.back_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Back
+          type: default
+          hideActionLoading: true
+        actions:
+          onClick:
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: escalate_drawer
+                method: setOpen
+                args:
+                  open: false
+      - id: selected.escalate_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Escalate
+        actions:
+          onClick:
+            - id: validate
+              type: Validate
+              errorMessage: A comment is required.
+              params: selected.escalate_comment
+            - id: escalate_ticket
+              type: Mutate
+              params: escalate_ticket
+            - id: fetch
+              type: Fetch
+            - id: set_state
+              type: SetState
+              params:
+                selected:
+                  _get:
+                    key: '0'
+                    from:
+                      _request: fetch_selected
+                interviews:
+                  _request: interviews
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: escalate_drawer
+                method: setOpen
+                args:
+                  open: false
+  
+  - id: close_action_drawer
+    type: Drawer
+    layout:
+      contentGutter: 8
+    properties:
+      placement: left
+      width: 40%
+      mask: false
+      maskClosable: false
+    blocks:
+      - id: selected.confirm_close_title
+        type: Markdown
+        properties:
+          content: "#### Are you sure you want to close this issue?"
+      - id: selected.close_status_selector
+        type: Selector
+        required: true
+        properties:
+          title: Close Status
+          options:
+            - Resolved
+            - No Action Required
+      - id: selected.close_comment
+        type: TextArea
+        required: true
+        properties:
+          title: Comment
+      - id: selected.back_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Back
+          type: default
+          hideActionLoading: true
+        actions:
+          onClick:
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: close_action_drawer
+                method: setOpen
+                args:
+                  open: false
+      - id: selected.close_action_button
+        type: Button
+        layout:
+          size: auto
+        properties:
+          title: Close
+          danger: true
+        actions:
+          onClick:
+            - id: validate_status
+              type: Validate
+              errorMessage: A close status is required.
+              params: selected.close_status_selector
+            - id: validate_comment
+              type: Validate
+              errorMessage: A comment is required.
+              params: selected.close_comment
+            - id: close_ticket
+              type: Mutate
+              params: close_ticket
+            - id: reset_selected
+              type: SetState
+              params:
+                selected_id: null
+                selected: {}
+            - id: fetch
+              type: Fetch
+            - id: set_tickets
+              type: SetState
+              params:
+                interviews:
+                  _request: interviews
+            - id: set_visible
+              type: CallMethod
+              params:
+                blockId: close_action_drawer
+                method: setOpen
+                args:
+                  open: false
