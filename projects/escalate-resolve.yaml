@@ -9,6 +9,7 @@ _ref:
       # - Key Accounts
       - Fulfillment
       # - Procurement
+    division_selector: Company
 
     filter_fields:
       - name: Region
@@ -72,6 +73,7 @@ _ref:
       New: '#722ed1'
       Work in Progress: '#1890ff'
       Client Contacted: '#13c2c2'
+      Investigation Started: '#fa8c16'
       Assign to Department: '#7cb305'
       Escalated: '#faad14'
       Closed: '#bfbfbf'
@@ -91,6 +93,7 @@ _ref:
       New: PlusCircleTwoTone
       Escalated: ExclamationCircleOutlined
       Work in Progress: ToolTwoTone
+      Investigation Started: FileSearchOutlined
       Client Contacted: SoundTwoTone
       Assign to Department: SwapOutlined
       Closed: StopOutlined

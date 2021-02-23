@@ -4,6 +4,7 @@ _ref:
     page_id: overview
     dashboard_name: Overview
     connectionId: cx_collection
+    division_selector: Company
     departments:
       - New Business
       - Key Accounts

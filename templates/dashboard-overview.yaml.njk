@@ -1,12 +1,9 @@
 id: {{ page_id }}
 type: PageHeaderMenu
-public: true
 properties:
   title: {{ dashboard_name }}
   header:
     theme: light
-  logoSrc:
-    _global: company_logo
 layout:
   contentGutter: 8
 requests:
@@ -155,15 +152,17 @@ requests:
                 - $months.value
                 - 5
 
-actions:
+events:
   onInit:
     - id: set_departments
       type: SetState
       params:
+        division_selector:
+          _var: division_selector
         departments:
           _var: departments
     - id: fetch_init
-      type: Fetch
+      type: Request
       params: init
     - id: set_init
       type: SetState
@@ -172,6 +171,10 @@ actions:
           key: '0'
           from:
             _request: init
+    - id: fetch_all
+      type: Request
+      params:
+        all: true
 blocks:
   - id: filter_drawer
     type: Drawer
@@ -197,10 +200,12 @@ blocks:
         properties:
           block: true
           title: Apply
-        actions:
+        events:
           onClick:
             - id: fetch_months
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params: update_filter
             - id: set_months
               type: SetState
@@ -210,14 +215,16 @@ blocks:
                   from:
                     _request: update_filter
             - id: fetch_all
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
             - id: close_filter_drawer
               type: CallMethod
               params:
                 blockId: filter_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
   - id: explainer_modal
     type: Modal
     properties:
@@ -226,9 +233,12 @@ blocks:
       width: 700px
     blocks:
       - id: questionnaire_text
-        type: Markdown
+        type: DangerousMarkdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 2
         properties:
-          renderHtml: true
           content:
             _var: calculations_explainer
   - id: title_box
@@ -262,10 +272,9 @@ blocks:
             properties:
               title: Info
               icon: QuestionCircleOutlined
-              hideActionLoading: true
               shape: round
               type: default
-            actions:
+            events:
               onClick:
                 - id: open_explainer_modal
                   type: CallMethod
@@ -281,9 +290,8 @@ blocks:
             properties:
               title: Filter
               icon: FilterOutlined
-              hideActionLoading: true
               shape: round
-            actions:
+            events:
               onClick:
                 - id: open_filter_drawer
                   type: CallMethod
@@ -295,11 +303,12 @@ blocks:
     type: Box
     blocks:
       - id: company_overview_title
-        type: Html
+        type: Title
         layout:
           size: auto
         properties:
-          html: '<h4>Company</h4>'
+          content: Company
+          level: 4
       - id: company_overview_card
         type: Card
         layout:
@@ -331,11 +340,12 @@ blocks:
     type: Box
     blocks:
       - id: divisions_overview_title
-        type: Html
+        type: Title
         layout:
           size: auto
         properties:
-          html: '<h4>Divisions</h4>'
+          content: Divisions
+          level: 4
       - id: divisions_overview_card
         type: Card
         layout:
@@ -372,11 +382,12 @@ blocks:
     type: Box
     blocks:
       - id: departments_overview_title
-        type: Html
+        type: Title
         layout:
           size: auto
         properties:
-          html: '<h4>Departments</h4>'
+          content: Departments
+          level: 4
       - id: departments_overview_card
         type: Card
         layout:
@@ -413,23 +424,25 @@ blocks:
     type: Box
     blocks:
       - id: csi_yoy_title
-        type: Html
+        type: Title
         layout:
           span: 12
           # grow: 1
           # shrink: 1
           # size: auto
         properties:
-          html: '<h4>CSI Year on Year</h4>'
+          content: CSI Year on Year
+          level: 4
       - id: nps_yoy_title
-        type: Html
+        type: Title
         layout:
           span: 12
           # grow: 0
           # shrink: 1
           # size: auto
         properties:
-          html: '<h4>NPS Year on Year</h4>'
+          content: NPS Year on Year
+          level: 4
       - id: yoy_card
         type: Card
         properties:
@@ -447,15 +460,18 @@ blocks:
                 divisions:
                   _var: divisions_fields
                 divisions_options:
-                  _mql_expr:
-                    $concatArrays:
-                      - - Company
-                      - $map:
-                          input:
-                            _var: divisions_fields
-                          in:
-                            $$this.name
-                      - _var: departments
+                  _mql.expr:
+                    on:
+                      _state: true
+                    expr:
+                      $concatArrays:
+                        - - Company
+                        - $map:
+                            input:
+                              _var: divisions_fields
+                            in:
+                              $$this.name
+                        - _var: departments
                     
 
   - id: divisions_overview_csi_box
@@ -464,9 +480,10 @@ blocks:
       span: 12
     blocks:
       - id: divisions_overview_csi_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>CSI by level of analysis</h4>'
+          content: CSI by level of analysis
+          level: 4
       - id: divisions_overview_csi_card
         type: Card
         properties:
@@ -492,9 +509,10 @@ blocks:
       span: 12
     blocks:
       - id: divisions_overview_nps_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>NPS by level of analysis</h4>'
+          content: NPS by level of analysis
+          level: 4
       - id: divisions_overview_nps_card
         type: Card
         properties:
@@ -520,9 +538,10 @@ blocks:
       span: 12
     blocks:
       - id: divisions_quarterly_csi_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>CSI by quarter</h4>'
+          content: CSI by quarter
+          level: 4
       - id: divisions_quarterly_csi_card
         type: Card
         properties:
@@ -546,9 +565,10 @@ blocks:
       span: 12
     blocks:
       - id: divisions_quarterly_nps_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>NPS by quarter</h4>'
+          content: NPS by quarter
+          level: 4
       - id: divisions_quarterly_nps_card
         type: Card
         properties:

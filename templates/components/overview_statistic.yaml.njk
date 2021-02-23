@@ -782,10 +782,13 @@ blocks:
               _get:
                 key: 0.{{ index }}_{{ division }}_{{ period }}
                 from:
-                  _mql_expr:
-                    $ifNull:
-                      - _request: overview_index_{{ id }}
-                      - [{ {{ index }}_{{ division }}_{{ period }}: 'loading' }]
+                  _mql.expr:
+                    on:
+                      _state: true
+                    expr:
+                      $ifNull:
+                        - _request: overview_index_{{ id }}
+                        - [{ {{ index }}_{{ division }}_{{ period }}: 'loading' }]
   - id: movement_box_{{ id }}
     type: Box
     layout:
@@ -808,7 +811,7 @@ blocks:
               name: icon_size
               default: 14
           name:
-            _mql_expr:
+            _mql.expr:
               expr:
                 $switch:
                   branches:
@@ -832,13 +835,12 @@ blocks:
                 _get:
                   key: '0'
                   from:
-                    _mql_expr:
-                      $ifNull:
-                        - _request: overview_index_{{ id }}
-                        - [{}]
+                    _if_none:
+                      - _request: overview_index_{{ id }}
+                      - [{}]
           style:
             color:
-              _mql_expr:
+              _mql.expr:
                 expr:
                   $switch:
                     branches:
@@ -885,7 +887,7 @@ blocks:
                     from:
                       _request: overview_index_{{ id }}
                 color:
-                  _mql_expr:
+                  _mql.expr:
                     expr:
                       $switch:
                         branches:

@@ -139,11 +139,12 @@ blocks:
     type: Selector
     layout:
       size: 200
-    defaultValue:
-      _get:
-        key: '1.name'
-        from:
-          _var: subindices
+    # TODO:
+    # defaultValue: 
+    #  _get:
+    #    key: '1.name'
+    #    from:
+    #      _var: subindices
     properties:
       title: Subindex
       label:
@@ -151,7 +152,7 @@ blocks:
       size: small
       allowClear: false
       options:
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _var: subindices
           pipeline:
@@ -162,7 +163,7 @@ blocks:
                 value: $name
                 label: $name
   - id: {{ id }}_chart
-    type: AmCharts4XY
+    type: AmChartsXY
     properties:
       height: 
         _var: height
@@ -177,7 +178,7 @@ blocks:
         list:
           _var: colors
       data:
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _request: indices_trend_aggregation_{{ id }}
           pipeline:
@@ -239,78 +240,77 @@ blocks:
           disabled: true
 
       series:
-        _mql_expr:
-          $concatArrays:
-            - _mql_aggregate:
-                on:
-                    _request: indices_trend_aggregation_{{ id }}
-                pipeline:
-                    - $match:
-                        subindex:
-                          _state: subindex_selector
-                    - $project:
-                        obj:
-                          $objectToArray: $$ROOT
-                    - $unwind:
-                        path: $obj
-                    - $group:
-                        _id: $obj.k
-                        month: 
-                          $first:
-                            $obj.k
-                        sum:
-                          $sum: $obj.v
-                        all:
-                          $first: $all
-                    - $match:
-                        sum:
-                          $ne: 0
-                    - $match:
-                        _id:
-                          $ne: month
-                    - $match:
-                        _id:
-                          $ne: subindex
-                    - $match:
-                        _id:
-                          $ne: subindex_score
-                    # - $sort:
-                    #     _id: 1
-                    - $project:
-                        _id: 0
-                        type: LineSeries
-                        name: $_id
-                        connect: false
-                        strokeWidth: 
-                          $literal: 2
-                        tensionX: 
-                          $literal: 0.9
-                        tensionY: 
-                          $literal: 0.9
-                        legendSettings:
-                          itemValueText: '{valueY}'
-                        dataFields:
-                          valueY: $_id
-                          dateX: month
-                          all: $all
-            - - type: LineSeries
-                name:
-                  _state: subindex_selector
-                # name: CSE
-                connect: false
-                # fillOpacity: 0.5
-                stroke: "#000"
-                strokeWidth: 6
-                tensionX: 0.9
-                tensionY: 0.9
-                legendSettings:
-                  itemValueText: '{valueY}'
-                dataFields:
-                  valueY: subindex_score
-                  dateX: month
-                  all: all
-                tooltipText: "{all}"
-                tooltip:
-                  getFillFromObject: false
-                  background:
-                    fill: "#000"
+        _array.concat:
+          - _mql.aggregate:
+              on:
+                  _request: indices_trend_aggregation_{{ id }}
+              pipeline:
+                  - $match:
+                      subindex:
+                        _state: subindex_selector
+                  - $project:
+                      obj:
+                        $objectToArray: $$ROOT
+                  - $unwind:
+                      path: $obj
+                  - $group:
+                      _id: $obj.k
+                      month: 
+                        $first:
+                          $obj.k
+                      sum:
+                        $sum: $obj.v
+                      all:
+                        $first: $all
+                  - $match:
+                      sum:
+                        $ne: 0
+                  - $match:
+                      _id:
+                        $ne: month
+                  - $match:
+                      _id:
+                        $ne: subindex
+                  - $match:
+                      _id:
+                        $ne: subindex_score
+                  # - $sort:
+                  #     _id: 1
+                  - $project:
+                      _id: 0
+                      type: LineSeries
+                      name: $_id
+                      connect: false
+                      strokeWidth: 
+                        $literal: 2
+                      tensionX: 
+                        $literal: 0.9
+                      tensionY: 
+                        $literal: 0.9
+                      legendSettings:
+                        itemValueText: '{valueY}'
+                      dataFields:
+                        valueY: $_id
+                        dateX: month
+                        all: $all
+          - - type: LineSeries
+              name:
+                _state: subindex_selector
+              # name: CSE
+              connect: false
+              # fillOpacity: 0.5
+              stroke: "#000"
+              strokeWidth: 6
+              tensionX: 0.9
+              tensionY: 0.9
+              legendSettings:
+                itemValueText: '{valueY}'
+              dataFields:
+                valueY: subindex_score
+                dateX: month
+                all: all
+              tooltipText: "{all}"
+              tooltip:
+                getFillFromObject: false
+                background:
+                  fill: "#000"

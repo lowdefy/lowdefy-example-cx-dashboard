@@ -4,6 +4,7 @@ _ref:
     page_id: project
     dashboard_name: Project
     connectionId: cx_collection
+    division_selector: Company
     departments:
       - Fulfillment
     subindices:

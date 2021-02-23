@@ -207,10 +207,13 @@ blocks:
               _get:
                 key: 0.index_current
                 from:
-                  _mql_expr:
-                    $ifNull:
-                      - _request: index_statistic_aggregation_{{ id }}
-                      - [{ index_current: 'loading' }]
+                  _mql.expr:
+                    on:
+                      _state: true
+                    expr:
+                      $ifNull:
+                        - _request: index_statistic_aggregation_{{ id }}
+                        - [{ index_current: 'loading' }]
   - id: index_statistic_subtitle_box_{{ id }}
     type: Box
     layout:
@@ -229,7 +232,7 @@ blocks:
           marginRight: 8
         properties:
           name:
-            _mql_expr:
+            _mql.expr:
               expr:
                 $switch:
                   branches:
@@ -248,13 +251,16 @@ blocks:
                 _get:
                   key: '0'
                   from:
-                    _mql_expr:
-                      $ifNull:
-                        - _request: index_statistic_aggregation_{{ id }}
-                        - [{}]
+                    _mql.expr:
+                      on:
+                        _state: true
+                      expr:
+                        $ifNull:
+                          - _request: index_statistic_aggregation_{{ id }}
+                          - [{}]
           style:
             color:
-              _mql_expr:
+              _mql.expr:
                 expr:
                   $switch:
                     branches:
@@ -301,7 +307,7 @@ blocks:
                     from:
                       _request: index_statistic_aggregation_{{ id }}
                 color:
-                  _mql_expr:
+                  _mql.expr:
                     expr:
                       $switch:
                         branches:

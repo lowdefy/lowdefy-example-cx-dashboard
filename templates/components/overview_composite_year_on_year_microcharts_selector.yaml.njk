@@ -22,7 +22,6 @@ blocks:
     type: Selector
     layout:
       size: 200
-    defaultValue: Company
     properties:
       title: Division
       label:
@@ -42,7 +41,7 @@ blocks:
             id: csi_yoy_overview
             connectionId: {{ connectionId }}
             chart_data:
-              _mql_aggregate:
+              _mql.aggregate:
                 on:
                   _request: csi_overview_year_on_year_csi_yoy_overview
                 pipeline:
@@ -67,7 +66,7 @@ blocks:
             id: nps_yoy_overview
             connectionId: {{ connectionId }}
             chart_data:
-              _mql_aggregate:
+              _mql.aggregate:
                 on:
                   _request: nps_overview_year_on_year_nps_yoy_overview
                 pipeline:

@@ -251,7 +251,6 @@ blocks:
     field: division_selector
     layout:
       size: 200
-    defaultValue: Company
     properties:
       title: Division
       label:
@@ -265,7 +264,7 @@ blocks:
         - Parts
         - Service
   - id: {{ id }}_chart
-    type: AmCharts4XY
+    type: AmChartsXY
     properties:
       height:
         _var: chart_height
@@ -279,7 +278,7 @@ blocks:
         list:
           _var: colors
       data:
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _request: csi_overview_year_on_year_{{ id }}
           pipeline:
@@ -335,7 +334,7 @@ blocks:
           disabled: true
 
       series:
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _request: csi_overview_year_on_year_{{ id }}
           pipeline:

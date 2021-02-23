@@ -1,26 +1,25 @@
 id: {{ page_id }}-responses
 type: PageHeaderMenu
-public: true
 properties:
   title: {{ dashboard_name }}
-  logoSrc:
-    _global: company_logo
   header:
     theme: light
 layout:
   contentGutter: 8
-actions:
+events:
   onInit:
     - id: set_departments
       type: SetState
       params:
+        division_selector:
+          _var: division_selector
         departments:
           _var: departments
         pagination:
           pageSize: 10
           skip: 0
     - id: fetch_init
-      type: Fetch
+      type: Request
       params: init
     - id: set_init
       type: SetState
@@ -30,7 +29,7 @@ actions:
           from:
             _request: init
     - id: fetch_interviews
-      type: Fetch
+      type: Request
       params:
         - totals
         - interviews
@@ -382,7 +381,6 @@ blocks:
       - id: details_elements
         type: Markdown
         properties:
-          renderHtml: true
           content:
             _nunjucks:
               template: |
@@ -398,6 +396,10 @@ blocks:
                 _state: selected
   - id: interviews_title
     type: Markdown
+    loading: 
+      type: SkeletonParagraph
+      properties:
+        lines: 1
     properties:
       content: "###### Interviews"
   - id: search_box
@@ -413,10 +415,12 @@ blocks:
           placeholder: Search
           label:
             disabled: true
-        actions:
+        events:
           onPressEnter:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews
@@ -433,10 +437,12 @@ blocks:
           title: Search
           # hideTitle: true
           icon: SearchOutlined
-        actions:
+        events:
           onClick:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews
@@ -454,7 +460,7 @@ blocks:
           # hideTitle: true
           icon: ReloadOutlined
           type: default
-        actions:
+        events:
           onClick:
             - id: reset
               type: Reset
@@ -476,10 +482,12 @@ blocks:
           showSearch: true
           options:
             _state: {{ item.field }}_list
-        actions:
+        events:
           onChange:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews
@@ -510,10 +518,12 @@ blocks:
           label:
             disabled: true
           placeholder: Month From
-        actions:
+        events:
           onChange:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews
@@ -530,10 +540,12 @@ blocks:
           label:
             disabled: true
           placeholder: Month To
-        actions:
+        events:
           onChange:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews
@@ -549,17 +561,19 @@ blocks:
         disabled: true
       placeholder: Select Elements
       options:
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _var: elements
           pipeline:
             - $project:
                 value: $name
                 label: $name
-    actions:
+    events:
       onChange:
         - id: fetch_interviews
-          type: Fetch
+          type: Request
+          messages:
+            loading: true
           params:
             - totals
             - interviews
@@ -578,7 +592,7 @@ blocks:
         blocks:
           - id: interviews.$.box
             type: Box
-            actions:
+            events:
               onClick:
                 - id: set_selected
                   type: SetState
@@ -654,7 +668,7 @@ blocks:
                           percent:
                             _state: interviews.$.csi
                           strokeColor:
-                            _mql_expr:
+                            _mql.expr:
                               expr:
                                 $switch:
                                   branches:
@@ -735,10 +749,13 @@ blocks:
                   _not:
                     _eq:
                       - _state: interviews.$._id
-                      - _mql_expr:
-                          $arrayElemAt:
-                            - $interviews._id
-                            - -1
+                      - _mql.expr:
+                          on:
+                            _state: true
+                          expr:
+                            $arrayElemAt:
+                              - $interviews._id
+                              - -1
 
   - id: box_pagination
     type: Box
@@ -759,10 +776,12 @@ blocks:
               key: 0.total
               from:
                 _request: totals
-        actions:
+        events:
           onShowSizeChange:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews
@@ -777,7 +796,9 @@ blocks:
                   _request: interviews
           onChange:
             - id: fetch_interviews
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params:
                 - totals
                 - interviews

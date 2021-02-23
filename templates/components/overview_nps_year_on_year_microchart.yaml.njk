@@ -9,7 +9,7 @@
 ##   colors: [_string_] - list of colors to for year on year lines, latest year is last in the list.
 ## ------------------
 id: {{ id }}
-type: AmCharts4XY
+type: AmChartsXY
 layout:
   contentJustify: end
   span:
@@ -411,7 +411,7 @@ properties:
       disabled: true
 
   series:
-    _mql_aggregate:
+    _mql.aggregate:
       on:
         _request: nps_overview_year_on_year_{{ id }}
       pipeline:

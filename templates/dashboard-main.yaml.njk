@@ -1,10 +1,7 @@
 id: {{ page_id }}
 type: PageHeaderMenu
-public: true
 properties:
   title: {{ dashboard_name }}
-  logoSrc:
-    _global: company_logo
   header:
     theme: light
 layout:
@@ -147,15 +144,17 @@ requests:
               $arrayElemAt:
                 - $months.value
                 - 5
-actions:
+events:
   onInit:
     - id: set_departments
       type: SetState
-      params:
+      params: 
+        division_selector:
+          _var: division_selector
         departments:
           _var: departments
     - id: fetch_init
-      type: Fetch
+      type: Request
       params: init
     - id: set_init
       type: SetState
@@ -164,6 +163,10 @@ actions:
           key: '0'
           from:
             _request: init
+    - id: fetch_all
+      type: Request
+      params:
+        all: true
 blocks:
   - id: filter_drawer
     type: Drawer
@@ -189,10 +192,12 @@ blocks:
         properties:
           block: true
           title: Apply
-        actions:
+        events:
           onClick:
             - id: fetch_months
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
               params: update_months
             - id: set_months
               type: SetState
@@ -202,14 +207,16 @@ blocks:
                   from:
                     _request: update_months
             - id: fetch_all
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
             - id: close_filter_drawer
               type: CallMethod
               params:
                 blockId: filter_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
   - id: questionnaire_modal
     type: Modal
     properties:
@@ -218,9 +225,8 @@ blocks:
       width: 700px
     blocks:
       - id: questionnaire_text
-        type: Markdown
+        type: DangerousMarkdown
         properties:
-          renderHtml: true
           content:
             _var: questionnaire
   - id: csi_explainer_modal
@@ -231,9 +237,8 @@ blocks:
       width: 700px
     blocks:
       - id: explainer_text
-        type: Markdown
+        type: DangerousMarkdown
         properties:
-          renderHtml: true
           content:
             _var: csi_description
   - id: nps_explainer_modal
@@ -244,9 +249,8 @@ blocks:
       width: 700px
     blocks:
       - id: nps_description
-        type: Markdown
+        type: DangerousMarkdown
         properties:
-          renderHtml: true
           content:
             _var: nps_description
   - id: title_box
@@ -283,7 +287,7 @@ blocks:
               hideActionLoading: true
               shape: round
               type: default
-            actions:
+            events:
               onClick:
                 - id: link_data
                   type: Link
@@ -301,7 +305,7 @@ blocks:
               hideActionLoading: true
               shape: round
               type: default
-            actions:
+            events:
               onClick:
                 - id: open_questionnaire_modal
                   type: CallMethod
@@ -319,7 +323,7 @@ blocks:
               icon: FilterOutlined
               hideActionLoading: true
               shape: round
-            actions:
+            events:
               onClick:
                 - id: open_filter_drawer
                   type: CallMethod
@@ -334,11 +338,12 @@ blocks:
       contentGutter: [8,0]
     blocks:
       - id: csi_title
-        type: Html
+        type: Title
         layout:
           size: auto
         properties:
-          html: '<h4>CSI</h4>'
+          content: CSI
+          level: 4
       - id: csi_info
         type: Icon
         layout:
@@ -346,7 +351,7 @@ blocks:
         properties:
           name: QuestionCircleTwoTone
           hideActionLoading: true
-        actions:
+        events:
           onClick:
             - id: open_explainer_modal
               type: CallMethod
@@ -376,11 +381,12 @@ blocks:
       contentGutter: [8,0]
     blocks:
       - id: nps_title
-        type: Html
+        type: Title
         layout:
           size: auto
         properties:
-          html: '<h4>NPS</h4>'
+          content: NPS
+          level: 4
       - id: nps_info
         type: Icon
         layout:
@@ -388,7 +394,7 @@ blocks:
         properties:
           name: QuestionCircleTwoTone
           hideActionLoading: true
-        actions:
+        events:
           onClick:
             - id: open_explainer_modal
               type: CallMethod
@@ -481,9 +487,10 @@ blocks:
       span: 24
     blocks:
       - id: elements_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>Elements</h4>'
+          content: Elements
+          level: 4
       - id: elements_card
         type: Card
         layout:
@@ -513,9 +520,10 @@ blocks:
       span: 24
     blocks:
       - id: nps_by_region_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>NPS and CSI by region over past 3 months</h4>'
+          content: NPS and CSI by region over past 3 months
+          level: 4
       - id: nps_region_card
         type: Card
         layout:
@@ -533,7 +541,7 @@ blocks:
               label:
                 disabled: true
               options:
-                _mql_aggregate:
+                _mql.aggregate:
                   on:
                     _request: nps_category_aggregation_nps_by_region
                   pipeline:
@@ -553,7 +561,7 @@ blocks:
                     span: 12
                     category: region
                     chart_data:
-                      _mql_aggregate:
+                      _mql.aggregate:
                         on:
                           _request: nps_category_aggregation_nps_by_region
                         pipeline:
@@ -573,7 +581,7 @@ blocks:
                     color:
                       _global: colors.csi
                     chart_data:
-                      _mql_aggregate:
+                      _mql.aggregate:
                         on:
                           _request: index_category_aggregation_csi_by_region
                         pipeline:
@@ -587,7 +595,7 @@ blocks:
           #       id: nps_by_region
           #       category: regions
           #       options:
-          #         _mql_aggregate:
+          #         _mql.aggregate:
           #           on:
           #             _request: nps_category_aggregation_nps_by_region
           #           pipeline:
@@ -604,7 +612,7 @@ blocks:
           #             connectionId: {{ connectionId }}
           #             category: region
           #             chart_data:
-          #               _mql_aggregate:
+          #               _mql.aggregate:
           #                 on:
           #                   _request: nps_category_aggregation_nps_by_region
           #                 pipeline:
@@ -634,7 +642,7 @@ blocks:
   #               id: csi_by_region
   #               category: regions
   #               options:
-  #                 _mql_aggregate:
+  #                 _mql.aggregate:
   #                   on:
   #                     _request: index_category_aggregation_csi_by_region
   #                   pipeline:
@@ -655,7 +663,7 @@ blocks:
   #                     color:
   #                       _global: colors.csi
   #                     chart_data:
-  #                       _mql_aggregate:
+  #                       _mql.aggregate:
   #                         on:
   #                           _request: index_category_aggregation_csi_by_region
   #                         pipeline:
@@ -668,9 +676,10 @@ blocks:
     type: Box
     blocks:
       - id: elements_by_region_title
-        type: Html
+        type: Title
         properties:
-          html: '<h4>Elements by region</h4>'
+          content: Elements by region
+          level: 4
       - id: elements_by_region_card
         type: Card
         properties:

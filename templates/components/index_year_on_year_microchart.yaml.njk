@@ -11,7 +11,7 @@
 ##   colors: [_string_] - list of colors to for year on year lines, latest year is last in the list.
 ## ------------------
 id: {{ id }}
-type: AmCharts4XY
+type: AmChartsXY
 requests:
   - id: index_year_on_year_aggregation_{{ id }}
     type: MongoDBAggregation
@@ -205,7 +205,7 @@ properties:
       disabled: true
 
   series:
-    _mql_aggregate:
+    _mql.aggregate:
       on:
         _request: index_year_on_year_aggregation_{{ id }}
       pipeline:

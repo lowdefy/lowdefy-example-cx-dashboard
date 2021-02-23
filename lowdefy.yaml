@@ -1,3 +1,15 @@
+name: lowdefy-example-cx-dashboard
+lowdefy: 3.10.1
+licence: MIT
+
+types:
+  AmChartsXY:
+    url: https://blocks-cdn.lowdefy.com/v3.10.1/blocks-amcharts/meta/AmChartsXY.json
+  AmChartsPie:
+    url: https://blocks-cdn.lowdefy.com/v3.10.1/blocks-amcharts/meta/AmChartsPie.json
+  AgGridAlpine:
+    url: https://blocks-cdn.lowdefy.com/v3.10.1/blocks-aggrid/meta/AgGridAlpine.json
+
 global:
   _ref: global.yaml
 
@@ -11,7 +23,8 @@ connections:
       databaseName: example-cx
       collection: cx-collection
       databaseUri:
-        _secret: lowdefy_examples_mdb
+        _secret: EXAMPLES_MDB
+      write: true
 
 pages:
   - _ref: projects/overview.yaml

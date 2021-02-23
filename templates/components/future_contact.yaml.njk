@@ -98,10 +98,13 @@ blocks:
         _get:
           key: 0.percent_telephonically
           from:
-            _mql_expr:
-              $ifNull:
-                - _request: contact_aggregation_{{ id }}
-                - [{ percent_telephonically: 0 }]
+            _mql.expr:
+              on:
+                _state: true
+              expr:
+                $ifNull:
+                  - _request: contact_aggregation_{{ id }}
+                  - [{ percent_telephonically: 0 }]
       strokeColor:
         _var: colors.0
   - id: title_email_{{ id }}
@@ -120,10 +123,13 @@ blocks:
         _get:
           key: 0.percent_email
           from:
-            _mql_expr:
-              $ifNull:
-                - _request: contact_aggregation_{{ id }}
-                - [{ percent_email: 0 }]
+            _mql.expr:
+              on:
+                _state: true
+              expr:
+                $ifNull:
+                  - _request: contact_aggregation_{{ id }}
+                  - [{ percent_email: 0 }]
       strokeColor:
         _var: colors.1
   - id: title_other_{{ id }}
@@ -142,10 +148,13 @@ blocks:
         _get:
           key: 0.percent_other
           from:
-            _mql_expr:
-              $ifNull:
-                - _request: contact_aggregation_{{ id }}
-                - [{ percent_other: 0 }]
+            _mql.expr:
+              on:
+                _state: true
+              expr:
+                $ifNull:
+                  - _request: contact_aggregation_{{ id }}
+                  - [{ percent_other: 0 }]
       strokeColor:
         _var: colors.2
 

@@ -231,7 +231,7 @@ blocks:
       size: small
       allowClear: false
       options:
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _request: indices_category_aggregation_{{ id }}
           pipeline:
@@ -243,7 +243,7 @@ blocks:
             - $sort:
                 label: 1
   - id: {{ id }}_chart
-    type: AmCharts4XY
+    type: AmChartsXY
     properties:
       # height: 
       #   _var: height
@@ -259,7 +259,7 @@ blocks:
           _var: colors
       data:
         # _request: indices_category_aggregation_{{ id }}
-        _mql_aggregate:
+        _mql.aggregate:
           on:
             _request: indices_category_aggregation_{{ id }}
           pipeline:

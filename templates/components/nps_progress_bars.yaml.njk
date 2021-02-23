@@ -95,8 +95,8 @@ blocks:
   - id: title_promoters_{{ id }}
     type: Markdown
     style:
-        '.markdown-body':
-          fontSize: 12px
+      '.markdown-body':
+        fontSize: 12px
     properties:
       content: Promoters
   - id: promoters_{{ id }}
@@ -108,17 +108,20 @@ blocks:
         _get:
           key: 0.percent_promoters
           from:
-            _mql_expr:
-              $ifNull:
-                - _request: nps_progress_bars_{{ id }}
-                - [{ percent_promoters: 0 }]
+            _mql.expr:
+              on:
+                _state: true
+              expr:
+                $ifNull:
+                  - _request: nps_progress_bars_{{ id }}
+                  - [{ percent_promoters: 0 }]
       strokeColor:
         _global: colors.nps.promoter
   - id: title_indifferent_{{ id }}
     type: Markdown
     style:
-        '.markdown-body':
-          fontSize: 12px
+      '.markdown-body':
+        fontSize: 12px
     properties:
       content: Indifferent
   - id: indifferent_{{ id }}
@@ -130,17 +133,20 @@ blocks:
         _get:
           key: 0.percent_indifferent
           from:
-            _mql_expr:
-              $ifNull:
-                - _request: nps_progress_bars_{{ id }}
-                - [{ percent_indifferent: 0 }]
+            _mql.expr:
+              on:
+                _state: true
+              expr:
+                $ifNull:
+                  - _request: nps_progress_bars_{{ id }}
+                  - [{ percent_indifferent: 0 }]
       strokeColor:
         _global: colors.nps.indifferent
   - id: title_detractors_{{ id }}
     type: Markdown
     style:
-        '.markdown-body':
-          fontSize: 12px
+      '.markdown-body':
+        fontSize: 12px
     properties:
       content: Detractors
   - id: detractors_{{ id }}
@@ -152,10 +158,13 @@ blocks:
         _get:
           key: 0.percent_detractors
           from:
-            _mql_expr:
-              $ifNull:
-                - _request: nps_progress_bars_{{ id }}
-                - [{ percent_detractors: 0 }]
+            _mql.expr:
+              on:
+                _state: true
+              expr:
+                $ifNull:
+                  - _request: nps_progress_bars_{{ id }}
+                  - [{ percent_detractors: 0 }]
       strokeColor:
         _global: colors.nps.detractor
 

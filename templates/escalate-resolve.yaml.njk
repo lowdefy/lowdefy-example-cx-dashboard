@@ -1,21 +1,20 @@
 id: {{ page_id }}
 type: PageHeaderMenu
-public: true
 properties:
   title: {{ dashboard_name }}
-  logoSrc:
-    _global: company_logo
   header:
     theme: light
 layout:
   contentGutter: [8,0]
-actions:
+events:
   onInit:
     - id: set_departments
       type: SetState
       params:
         min_date:
           _date: 2020-07-01
+        division_selector:
+          _var: division_selector
         departments:
           _var: departments
         pagination:
@@ -24,7 +23,7 @@ actions:
         open_closed_selector: Open
         flagged_selector: []
     - id: fetch_init
-      type: Fetch
+      type: Request
       params: init
     - id: set_init
       type: SetState
@@ -34,7 +33,7 @@ actions:
           from:
             _request: init
     - id: fetch_interviews
-      type: Fetch
+      type: Request
       params:
         - totals
         - interviews
@@ -424,8 +423,6 @@ requests:
                 - $er_history
                 - 2
             er_history_full: $er_history
-
-mutations:
   - id: set_flagged
     type: MongoDBUpdateOne
     connectionId: {{ connectionId }}
@@ -629,6 +626,10 @@ blocks:
     blocks:
       - id: interviews_title
         type: Markdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 1
         properties:
           content: "##### Interviews"
       - id: search_box
@@ -645,10 +646,12 @@ blocks:
               placeholder: Search
               label:
                 disabled: true
-            actions:
+            events:
               onPressEnter:
                 - id: fetch_interviews
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - totals
                     - interviews
@@ -664,10 +667,12 @@ blocks:
             properties:
               title: Search
               icon: SearchOutlined
-            actions:
+            events:
               onClick:
                 - id: fetch_interviews
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - totals
                     - interviews
@@ -684,7 +689,7 @@ blocks:
               title: Reset
               icon: ReloadOutlined
               type: default
-            actions:
+            events:
               onClick:
                 - id: reset
                   type: Reset
@@ -705,14 +710,16 @@ blocks:
               options:
                 _var: statuses
               size: small
-            actions:
+            events:
               onChange:
                 - id: reset_selected
                   type: SetState
                   params:
                     selected: {}
                 - id: fetch
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - totals
                     - interviews
@@ -732,14 +739,16 @@ blocks:
               options:
                 _var: departments
               size: small
-            actions:
+            events:
               onChange:
                 - id: reset_selected
                   type: SetState
                   params:
                     selected: {}
                 - id: fetch
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - interviews
                 - id: set_fetched_tickets
@@ -760,10 +769,12 @@ blocks:
               showSearch: true
               options:
                 _state: {{ item.field }}_list
-            actions:
+            events:
               onChange:
                 - id: fetch_interviews
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - totals
                     - interviews
@@ -786,14 +797,16 @@ blocks:
                 - Closed
               size:
                 small
-            actions:
+            events:
               onChange:
                 - id: reset_selected
                   type: SetState
                   params:
                     selected: {}
                 - id: fetch
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - totals
                     - interviews
@@ -811,14 +824,16 @@ blocks:
                 disabled: true
               options:
                 - Only flagged
-            actions:
+            events:
               onChange:
                 - id: reset_selected
                   type: SetState
                   params:
                     selected: {}
                 - id: fetch
-                  type: Fetch
+                  type: Request
+                  messages:
+                    loading: true
                   params:
                     - totals
                     - interviews
@@ -852,7 +867,7 @@ blocks:
                           - _state: selected._id
                       then: "#f0f0f0"
                       else: "#ffff"
-                actions:
+                events:
                   onClick:
                     - id: set_selected_id
                       type: SetState
@@ -860,7 +875,9 @@ blocks:
                         selected_id:
                           _state: interviews.$._id
                     - id: fetch_selected
-                      type: Fetch
+                      type: Request
+                      messages:
+                        loading: true
                       params:
                         - fetch_selected
                     - id: scroll_top
@@ -1009,7 +1026,7 @@ blocks:
                               percent:
                                 _state: interviews.$.csi
                               strokeColor:
-                                _mql_expr:
+                                _mql.expr:
                                   expr:
                                     $switch:
                                       branches:
@@ -1053,10 +1070,13 @@ blocks:
                   _not:
                     _eq:
                       - _state: interviews.$._id
-                      - _mql_expr:
-                          $arrayElemAt:
-                            - $interviews._id
-                            - -1
+                      - _mql.expr:
+                          on:
+                            _state: true
+                          expr:
+                            $arrayElemAt:
+                              - $interviews._id
+                              - -1
 
           - id: box_pagination
             type: Box
@@ -1077,10 +1097,12 @@ blocks:
                       key: 0.total
                       from:
                         _request: totals
-                actions:
+                events:
                   onShowSizeChange:
                     - id: fetch_interviews
-                      type: Fetch
+                      type: Request
+                      messages:
+                        loading: true
                       params:
                         - totals
                         - interviews
@@ -1095,7 +1117,9 @@ blocks:
                           _request: interviews
                   onChange:
                     - id: fetch_interviews
-                      type: Fetch
+                      type: Request
+                      messages:
+                        loading: true
                       params:
                         - totals
                         - interviews
@@ -1117,6 +1141,10 @@ blocks:
     blocks:
       - id: selected.title
         type: Markdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 1
         properties:
           content: "##### Selected"
       - id: selected_card
@@ -1126,9 +1154,12 @@ blocks:
             type: Result
             visible:
               _not:
-                _mql_test:
-                  selected._id:
-                    $exists: true
+                _mql.test:
+                  on:
+                    _state: true
+                  test:
+                    selected._id:
+                      $exists: true
             properties:
               icon:
                 name: ContainerTwoTone
@@ -1137,9 +1168,12 @@ blocks:
           - id: selected.visible_box
             type: Box
             visible:
-              _mql_test:
-                selected._id:
-                  $exists: true
+              _mql.test:
+                on:
+                  _state: true
+                test:
+                  selected._id:
+                    $exists: true
             layout:
               contentGutter: 8
               contentJustify: center
@@ -1219,13 +1253,20 @@ blocks:
                                   - true
                               then: '#f5222d'
                               else: '#bfbfbf'
-                        actions:
+                        events:
                           onClick:
                             - id: set_flagged
-                              type: Mutate
+                              type: Request
+                              messages:
+                                loading: true
                               params: set_flagged
                             - id: fetch
-                              type: Fetch
+                              type: Request
+                              messages:
+                                loading: true
+                              params:
+                                - interviews
+                                - fetch_selected
                             - id: set_state
                               type: SetState
                               params:
@@ -1257,7 +1298,7 @@ blocks:
                           block: true
                           type: default
                           icon: RetweetOutlined
-                        actions:
+                        events:
                           onClick:
                             - id: set_invisible
                               type: CallMethod
@@ -1265,21 +1306,21 @@ blocks:
                                 blockId: comment_action_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: escalate_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: close_action_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_visible
                               type: CallMethod
                               params:
@@ -1296,7 +1337,7 @@ blocks:
                           block: true
                           type: default
                           icon: MessageOutlined
-                        actions:
+                        events:
                           onClick:
                             - id: set_invisible
                               type: CallMethod
@@ -1304,21 +1345,21 @@ blocks:
                                 blockId: change_status_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: escalate_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: close_action_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_visible
                               type: CallMethod
                               params:
@@ -1335,7 +1376,7 @@ blocks:
                           block: true
                           type: default
                           icon: ExclamationCircleOutlined
-                        actions:
+                        events:
                           onClick:
                             - id: set_invisible
                               type: CallMethod
@@ -1343,21 +1384,21 @@ blocks:
                                 blockId: comment_action_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: change_status_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: close_action_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_visible
                               type: CallMethod
                               params:
@@ -1374,7 +1415,7 @@ blocks:
                           block: true
                           type: default
                           icon: StopOutlined
-                        actions:
+                        events:
                           onClick:
                             - id: set_invisible
                               type: CallMethod
@@ -1382,21 +1423,21 @@ blocks:
                                 blockId: comment_action_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: change_status_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_invisible
                               type: CallMethod
                               params:
                                 blockId: escalate_drawer
                                 method: setOpen
                                 args:
-                                  open: false
+                                  - open: false
                             - id: set_visible
                               type: CallMethod
                               params:
@@ -1421,6 +1462,10 @@ blocks:
                     blocks:
                       - id: er_history_title
                         type: Markdown
+                        loading: 
+                          type: SkeletonParagraph
+                          properties:
+                            lines: 1
                         layout:
                           flex: 0 1 auto
                         properties:
@@ -1431,14 +1476,17 @@ blocks:
                         layout:
                           flex: 1 1 auto
                         visible:
-                          _mql_expr:
-                            $cond:
-                              - $gt:
-                                  - $size:
-                                      _state: selected.er_history_full
-                                  - 2
-                              - true
-                              - false
+                          _mql.expr:
+                            on:
+                              _state: true
+                            expr:
+                              $cond:
+                                - $gt:
+                                    - $size:
+                                        _state: selected.er_history_full
+                                    - 2
+                                - true
+                                - false
                         properties:
                           title:
                             _if:
@@ -1447,10 +1495,10 @@ blocks:
                                   _state: show_full_history
                               then: Show More
                               else: Show Less
-                          type: default
+                          type: text
                           size: small
                           hideActionLoading: true
-                        actions:
+                        events:
                           onClick:
                             - id: set_full_history
                               type: SetState
@@ -1476,10 +1524,10 @@ blocks:
                                   _not:
                                     _state: show_full_history
                       - id: selected.er_history
-                        type: Timeline
+                        type: TimelineList
                         properties:
                           data:
-                            _mql_aggregate:
+                            _mql.aggregate:
                               pipeline:
                                 - $addFields:
                                     icons:
@@ -1515,7 +1563,7 @@ blocks:
                                   template: |
                                     {% raw %}
                                     <h3> {{ action }} {{ extra }}</h3>
-                                    <p style="font-size: 10px;" ><i>{{ timestamp | date("lll") }} {{ user.name }}</i></p>
+                                    <p style="font-size: 10px;" ><i>{{ timestamp | date("lll") }}</i></p>
                                     <p>{{ comment }}</p>
                                     {% endraw %}
                                   on:
@@ -1529,6 +1577,10 @@ blocks:
                     blocks:
                       - id: selected.scores_title
                         type: Markdown
+                        loading: 
+                          type: SkeletonParagraph
+                          properties:
+                            lines: 1
                         properties:
                           content: "#### Respondent Details"
                       - id: csi_box
@@ -1539,6 +1591,10 @@ blocks:
                         blocks:
                           - id: selected.csi_title
                             type: Markdown
+                            loading: 
+                              type: SkeletonParagraph
+                              properties:
+                                lines: 1  
                             properties:
                               content: "###### CSI"
                           - id: selected.csi
@@ -1553,7 +1609,7 @@ blocks:
                               strokeColor:
                                 from: '#faad14'
                                 to:
-                                  _mql_expr:
+                                  _mql.expr:
                                     expr:
                                       $switch:
                                         branches:
@@ -1611,15 +1667,17 @@ blocks:
                         blocks:
                           - id: selected.nps_title
                             type: Markdown
+                            loading: 
+                              type: SkeletonParagraph
+                              properties:
+                                lines: 1
                             properties:
-                              renderHtml: true
                               content: "###### NPS Status"
                           - id: selected.nps
                             type: Html
                             layout:
                               flex: 0 1 auto
                             properties:
-                              renderHtml: true
                               html:
                                 _nunjucks:
                                   template: |
@@ -1635,7 +1693,7 @@ blocks:
                             properties:
                               size: 18
                               name:
-                                  _mql_expr:
+                                  _mql.expr:
                                     expr:
                                       $switch:
                                         branches:
@@ -1658,7 +1716,7 @@ blocks:
                                     on:
                                       _state: selected
                               color:
-                                  _mql_expr:
+                                  _mql.expr:
                                     expr:
                                       $switch:
                                         branches:
@@ -1695,7 +1753,7 @@ blocks:
                           items:
                             - label: Month
                               value:
-                                _mql_expr:
+                                _mql.expr:
                                   on:
                                     _state: selected
                                   expr:
@@ -1715,7 +1773,7 @@ blocks:
                                 _state: selected.company
                             - label: Interaction Date
                               value:
-                                _mql_expr:
+                                _mql.expr:
                                   on:
                                     _state: selected
                                   expr:
@@ -1749,8 +1807,11 @@ blocks:
                     blocks:
                       - id: interview_title
                         type: Markdown
+                        loading: 
+                          type: SkeletonParagraph
+                          properties:
+                            lines: 1
                         properties:
-                          renderHtml: true
                           content: "#### Responses"
                       - id: selected.elements
                         type: List
@@ -1771,7 +1832,7 @@ blocks:
                                   content:
                                     _state: selected.elements.$.score
                                   color:
-                                    _mql_expr:
+                                    _mql.expr:
                                       expr:
                                         $switch:
                                           branches:
@@ -1826,6 +1887,10 @@ blocks:
     blocks:
       - id: selected.change_status_title
         type: Markdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 1
         properties:
           content: "#### Change Status"
       - id: selected.change_status_selector
@@ -1879,7 +1944,7 @@ blocks:
           title: Back
           type: default
           hideActionLoading: true
-        actions:
+        events:
           onClick:
             - id: set_visible
               type: CallMethod
@@ -1887,28 +1952,37 @@ blocks:
                 blockId: change_status_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
       - id: selected.change_status_button
         type: Button
         layout:
           size: auto
         properties:
           title: Change Status
-        actions:
+        events:
           onClick:
             - id: validate_status
               type: Validate
-              errorMessage: A status is required.
+              messages: 
+                error: A status is required.
               params: selected.change_status_selector
             - id: validate_department
               type: Validate
-              errorMessage: A department is required.
+              messages: 
+                error: A department is required.
               params: selected.assigned_department_selector
             - id: change_status_on_ticket
-              type: Mutate
+              type: Request
+              messages:
+                loading: true
               params: change_status_on_ticket
             - id: fetch
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
+              params:
+                - interviews
+                - fetch_selected
             - id: set_state
               type: SetState
               params:
@@ -1925,14 +1999,14 @@ blocks:
                 blockId: escalate_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
             - id: set_visible
               type: CallMethod
               params:
                 blockId: change_status_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
   
   - id: comment_action_drawer
     type: Drawer
@@ -1946,6 +2020,10 @@ blocks:
     blocks:
       - id: selected.comment_action_title
         type: Markdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 1
         properties:
           content: "#### Comment"
       - id: selected.comment_input
@@ -1961,8 +2039,7 @@ blocks:
         properties:
           title: Back
           type: default
-          hideActionLoading: true
-        actions:
+        events:
           onClick:
             - id: set_visible
               type: CallMethod
@@ -1970,24 +2047,32 @@ blocks:
                 blockId: comment_action_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
       - id: selected.comment_action_button
         type: Button
         layout:
           size: auto
         properties:
           title: Save
-        actions:
+        events:
           onClick:
             - id: validate
               type: Validate
-              errorMessage: A comment is required.
+              messages: 
+                error: A comment is required.
               params: selected.comment_input
             - id: comment_on_ticket
-              type: Mutate
+              type: Request
               params: comment_on_ticket
+              messages:
+                loading: true
             - id: fetch
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
+              params:
+                - interviews
+                - fetch_selected
             - id: set_state
               type: SetState
               params:
@@ -2004,7 +2089,7 @@ blocks:
                 blockId: comment_action_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
   
   - id: escalate_drawer
     type: Drawer
@@ -2018,6 +2103,10 @@ blocks:
     blocks:
       - id: selected.escalate_title
         type: Markdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 1
         properties:
           content: "#### Escalate issue"
       - id: selected.escalate_comment
@@ -2032,8 +2121,7 @@ blocks:
         properties:
           title: Back
           type: default
-          hideActionLoading: true
-        actions:
+        events:
           onClick:
             - id: set_visible
               type: CallMethod
@@ -2041,24 +2129,32 @@ blocks:
                 blockId: escalate_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
       - id: selected.escalate_button
         type: Button
         layout:
           size: auto
         properties:
           title: Escalate
-        actions:
+        events:
           onClick:
             - id: validate
               type: Validate
-              errorMessage: A comment is required.
+              messages: 
+                error: A comment is required.
               params: selected.escalate_comment
             - id: escalate_ticket
-              type: Mutate
+              type: Request
               params: escalate_ticket
+              messages:
+                loading: true
             - id: fetch
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
+              params:
+                - interviews
+                - fetch_selected
             - id: set_state
               type: SetState
               params:
@@ -2075,7 +2171,7 @@ blocks:
                 blockId: escalate_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
   
   - id: close_action_drawer
     type: Drawer
@@ -2089,6 +2185,10 @@ blocks:
     blocks:
       - id: selected.confirm_close_title
         type: Markdown
+        loading: 
+          type: SkeletonParagraph
+          properties:
+            lines: 1
         properties:
           content: "#### Are you sure you want to close this issue?"
       - id: selected.close_status_selector
@@ -2111,8 +2211,7 @@ blocks:
         properties:
           title: Back
           type: default
-          hideActionLoading: true
-        actions:
+        events:
           onClick:
             - id: set_visible
               type: CallMethod
@@ -2120,7 +2219,7 @@ blocks:
                 blockId: close_action_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
       - id: selected.close_action_button
         type: Button
         layout:
@@ -2128,18 +2227,22 @@ blocks:
         properties:
           title: Close
           danger: true
-        actions:
+        events:
           onClick:
             - id: validate_status
               type: Validate
-              errorMessage: A close status is required.
+              messages:
+                error: A close status is required.
               params: selected.close_status_selector
             - id: validate_comment
               type: Validate
-              errorMessage: A comment is required.
+              messages:
+                error: A comment is required.
               params: selected.close_comment
             - id: close_ticket
-              type: Mutate
+              type: Request
+              messages:
+                loading: true
               params: close_ticket
             - id: reset_selected
               type: SetState
@@ -2147,7 +2250,12 @@ blocks:
                 selected_id: null
                 selected: {}
             - id: fetch
-              type: Fetch
+              type: Request
+              messages:
+                loading: true
+              params:
+                - interviews
+                - fetch_selected
             - id: set_tickets
               type: SetState
               params:
@@ -2159,4 +2267,4 @@ blocks:
                 blockId: close_action_drawer
                 method: setOpen
                 args:
-                  open: false
+                  - open: false
