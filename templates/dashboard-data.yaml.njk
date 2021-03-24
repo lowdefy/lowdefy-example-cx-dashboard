@@ -355,7 +355,7 @@ blocks:
       width: 1000px
     blocks:
       - id: details_respondent
-        type: Markdown
+        type: DangerousMarkdown
         layout:
           span: 12
         properties:
@@ -363,7 +363,7 @@ blocks:
           content:
             _var: respondent_details_modal
       - id: details_scores
-        type: Markdown
+        type: DangerousMarkdown
         layout:
           span: 12
         properties:
@@ -373,13 +373,13 @@ blocks:
               template: |
                 {% raw %}
                 #### Scores
-                NPS Status: <font style='color: {{ promoter_color }};' ><b>{{ promoter }}</b></font><br/>
-                CSI: {% if csi < 70 %} <font style='color: #cf1322;' ><b>{{ csi | round(1) }}</b></font> {% elif csi >= 90 %}<font style='color: #237804;' ><b>{{ csi | round(1) }}</b></font> {% else %} <b>{{ csi | round(1) }}</b> {% endif %} <br/>
+                NPS Status: <span style="color: {{ promoter_color }};" ><b>{{ promoter }}</b></span>
+                CSI: {% if csi < 70 %} <span style="color: #cf1322;" ><b>{{ csi | round(1) }}</b></span> {% elif csi >= 90 %}<span style="color: #237804;" ><b>{{ csi | round(1) }}</b></span> {% else %} <b>{{ csi | round(1) }}</b> {% endif %}
                 {% endraw %}
               on:
                 _state: selected
       - id: details_elements
-        type: Markdown
+        type: DangerousMarkdown
         properties:
           content:
             _nunjucks:
@@ -389,13 +389,13 @@ blocks:
                 | Element | Score | Comment |
                 |---------|-------|---------|
                 {% for item in elements -%}
-                | {{ item.name }} | {% if item.score < 7 %} <div style='color: #cf1322;' ><b> {{ item.score }} </b></div> {% elif item.score >= 9 %} <div style='color: #237804;' ><b> {{ item.score }} </b></div> {% else %} {{ item.score }} {% endif %}  | {{ item.comment }} |
+                | {{ item.name }} | {% if item.score < 7 %} <span style="color: #cf1322;" ><b> {{ item.score }} </b></span> {% elif item.score >= 9 %} <span style="color: #237804;" ><b> {{ item.score }} </b></span> {% else %} {{ item.score }} {% endif %}  | {{ item.comment }} |
                 {% endfor -%}
                 {% endraw %}
               on:
                 _state: selected
   - id: interviews_title
-    type: Markdown
+    type: DangerousMarkdown
     loading: 
       type: SkeletonParagraph
       properties:

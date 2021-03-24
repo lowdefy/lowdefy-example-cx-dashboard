@@ -1,0 +1,267 @@
+id: csi_trend
+type: MongoDBAggregation
+connectionId: {{ connectionId }}
+properties:
+  pipeline:
+    - $match:
+        published: true
+        department:
+          $in:
+            _state: departments
+    - $match:
+        $expr:
+          $and:
+            - $lte:
+                - $Mnt
+                - _state: end_month
+            - $gte:
+                - $Mnt
+                - $dateFromParts:
+                    year:
+                      $year:
+                        _state: end_month
+                    month:
+                      $subtract:
+                        - $month:
+                            _state: end_month
+                        - $add:
+                            - 23
+                            - _var: month_average
+    - $group:
+        _id: $Mnt
+        company_csi_den:
+          $sum: 1
+        company_csi_num:
+          $sum: $csi
+        company_csi:
+          $avg: $csi
+{% for item in departments %}
+        {{ item.field }}_csi_den:
+          $sum:
+            $cond:
+              - $eq:
+                - $department
+                - {{ item.name }}
+              - 1
+              - 0
+        {{ item.field }}_csi_num:
+          $sum:
+            $cond:
+              - $eq:
+                - $department
+                - {{ item.name }}
+              - $csi
+              - 0
+        {{ item.field }}_csi:
+          $avg:
+            $cond:
+              - $eq:
+                - $department
+                - {{ item.name }}
+              - $csi
+              - null
+{% endfor %}
+
+{% for item in divisions %}
+        {{ item.field }}_csi_den:
+          $sum:
+            $cond:
+              - $or:
+{% for department in item.departments %}
+                - $eq:
+                  - $department
+                  - {{ department }}
+{% endfor %}
+              - 1
+              - 0
+        {{ item.field }}_csi_num:
+          $sum:
+            $cond:
+              - $or:
+{% for department in item.departments %}
+                - $eq:
+                  - $department
+                  - {{ department }}
+{% endfor %}
+              - $csi
+              - 0
+        {{ item.field }}_csi:
+          $avg:
+            $cond:
+              - $or:
+{% for department in item.departments %}
+                - $eq:
+                  - $department
+                  - {{ department }}
+{% endfor %}
+              - $csi
+              - null
+{% endfor %}
+    - $sort:
+        _id: 1
+    - $group:
+        _id: 0
+        A:
+          $push:
+            month: $_id
+            company_csi: $company_csi
+            company_csi_den: $company_csi_den
+            company_csi_num: $company_csi_num
+{% for item in divisions %}
+            {{ item.field }}_csi: ${{ item.field }}_csi
+            {{ item.field }}_csi_den: ${{ item.field }}_csi_den
+            {{ item.field }}_csi_num: ${{ item.field }}_csi_num
+{% endfor %}
+{% for item in departments %}
+            {{ item.field }}_csi: ${{ item.field }}_csi
+            {{ item.field }}_csi_den: ${{ item.field }}_csi_den
+            {{ item.field }}_csi_num: ${{ item.field }}_csi_num
+{% endfor %}
+    - $project:
+        A:
+          $map:
+            input:
+              $range:
+                - 0
+                - $subtract:
+                    - $size: $A
+                    - $subtract:
+                        - _var: month_average
+                        - 1
+            in:
+              month:
+                $arrayElemAt:
+                  - $A.month
+                  - $sum:
+                      - $$this
+                      - $subtract:
+                          - _var: month_average
+                          - 1
+
+              company_csi_current:
+                $arrayElemAt:
+                  - $A.company_csi
+                  - $sum:
+                      - $$this
+                      - $subtract:
+                          - _var: month_average
+                          - 1
+              company_csi:
+                $cond:
+                  - $eq:
+                      - $sum:
+                          $slice:
+                            - $A.company_csi_den
+                            - $$this
+                            - _var: month_average
+                      - 0
+                  - null
+                  - $divide:
+                      - $sum:
+                          $slice:
+                            - $A.company_csi_num
+                            - $$this
+                            - _var: month_average
+                      - $sum:
+                          $slice:
+                            - $A.company_csi_den
+                            - $$this
+                            - _var: month_average
+{% for item in divisions %}
+              {{ item.field }}_csi_current:
+                $arrayElemAt:
+                  - $A.{{ item.field }}_csi
+                  - $sum:
+                      - $$this
+                      - $subtract:
+                          - _var: month_average
+                          - 1
+
+              {{ item.field }}_csi:
+                $cond:
+                  - $eq:
+                      - $sum:
+                          $slice:
+                            - $A.{{ item.field }}_csi_den
+                            - $$this
+                            - _var: month_average
+                      - 0
+                  - null
+                  - $divide:
+                      - $sum:
+                          $slice:
+                            - $A.{{ item.field }}_csi_num
+                            - $$this
+                            - _var: month_average
+                      - $sum:
+                          $slice:
+                            - $A.{{ item.field }}_csi_den
+                            - $$this
+                            - _var: month_average
+{% endfor %}
+{% for item in departments %}
+              {{ item.field }}_csi_current:
+                $arrayElemAt:
+                  - $A.{{ item.field }}_csi
+                  - $sum:
+                      - $$this
+                      - $subtract:
+                          - _var: month_average
+                          - 1
+
+              {{ item.field }}_csi:
+                $cond:
+                  - $eq:
+                      - $sum:
+                          $slice:
+                            - $A.{{ item.field }}_csi_den
+                            - $$this
+                            - _var: month_average
+                      - 0
+                  - null
+                  - $divide:
+                      - $sum:
+                          $slice:
+                            - $A.{{ item.field }}_csi_num
+                            - $$this
+                            - _var: month_average
+                      - $sum:
+                          $slice:
+                            - $A.{{ item.field }}_csi_den
+                            - $$this
+                            - _var: month_average
+{% endfor %}
+    - $unwind:
+        path: $A
+    - $replaceRoot:
+        newRoot: $A
+    - $project:
+        month: 1
+        csi_company: 
+          $round:
+            - $company_csi
+            - 1
+        csi_company_current: 
+          $round:
+            - $company_csi_current
+            - 1
+{% for item in divisions %}
+        csi_{{ item.field }}: 
+          $round:
+            - ${{ item.field }}_csi
+            - 1
+        csi_{{ item.field }}_current: 
+          $round:
+            - ${{ item.field }}_csi_current
+            - 1
+{% endfor %}
+{% for item in departments %}
+        csi_{{ item.field }}: 
+          $round: 
+            - ${{ item.field }}_csi
+            - 1
+        csi_{{ item.field }}_current: 
+          $round:
+            - ${{ item.field }}_csi_current
+            - 1
+{% endfor %}

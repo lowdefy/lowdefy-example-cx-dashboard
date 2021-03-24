@@ -25,7 +25,9 @@ layout:
   size:
     _if:
       test:
-        _var: size_auto
+        _not: 
+          _not: 
+            _var: size_auto
       then: auto
       else: null
   span:

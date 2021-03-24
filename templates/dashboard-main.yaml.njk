@@ -144,6 +144,7 @@ requests:
               $arrayElemAt:
                 - $months.value
                 - 5
+    
 events:
   onInit:
     - id: set_departments
@@ -153,6 +154,11 @@ events:
           _var: division_selector
         departments:
           _var: departments
+        subindex_selector:
+          _get:
+            key: '1.name'
+            from:
+              _var: subindices
     - id: fetch_init
       type: Request
       params: init

@@ -12,13 +12,21 @@
 ## ------------------
 
 id: {{ id }}
-type: AmChartsXY
+type: EChart
 layout:
   contentJustify: end
   span:
     _var:
       name: span
       default: 24
+loading:
+  type: Skeleton
+  properties: 
+    height: 
+      _var: height
+style:
+  height:
+    _var: height
 requests:
   - id: divisions_overview_{{ id }}
     type: MongoDBAggregation
@@ -338,246 +346,239 @@ requests:
             rank: 1
         - $project:
             nps_1month:
-              $cond:
-                - $eq:
-                    - $nps_sample_1month
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $promoters_1month
-                            - $detractors_1month
+              $round:
+                - $cond:
+                    - $eq:
                         - $nps_sample_1month
-                    - 100
+                        - 0
+                    - null
+                    - $multiply:
+                        - $divide:
+                            - $subtract:
+                                - $promoters_1month
+                                - $detractors_1month
+                            - $nps_sample_1month
+                        - 100
+                - 1
             nps_3month:
-              $cond:
-                - $eq:
-                    - $nps_sample_3month
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $promoters_3month
-                            - $detractors_3month
+              $round:
+                - $cond:
+                    - $eq:
                         - $nps_sample_3month
-                    - 100
+                        - 0
+                    - null
+                    - $multiply:
+                        - $divide:
+                            - $subtract:
+                                - $promoters_3month
+                                - $detractors_3month
+                            - $nps_sample_3month
+                        - 100
+                - 1
             nps_6month:
-              $cond:
-                - $eq:
-                    - $nps_sample_6month
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $promoters_6month
-                            - $detractors_6month
+              $round:
+                - $cond:
+                    - $eq:
                         - $nps_sample_6month
-                    - 100
+                        - 0
+                    - null
+                    - $multiply:
+                        - $divide:
+                            - $subtract:
+                                - $promoters_6month
+                                - $detractors_6month
+                            - $nps_sample_6month
+                        - 100
+                - 1 
             nps_12month:
-              $cond:
-                - $eq:
-                    - $nps_sample_12month
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $promoters_12month
-                            - $detractors_12month
+              $round:
+                - $cond:
+                    - $eq:
                         - $nps_sample_12month
-                    - 100
+                        - 0
+                    - null
+                    - $multiply:
+                        - $divide:
+                            - $subtract:
+                                - $promoters_12month
+                                - $detractors_12month
+                            - $nps_sample_12month
+                        - 100
+                - 1
             nps_fytd:
-              $cond:
-                - $eq:
-                    - $nps_sample_fytd
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $promoters_fytd
-                            - $detractors_fytd
+              $round:
+                - $cond:
+                    - $eq:
                         - $nps_sample_fytd
-                    - 100
+                        - 0
+                    - null
+                    - $multiply:
+                        - $divide:
+                            - $subtract:
+                                - $promoters_fytd
+                                - $detractors_fytd
+                            - $nps_sample_fytd
+                        - 100
+                - 1
             company_fytd:
-              $cond:
-                - $eq:
-                    - $company_nps_sample_fytd
-                    - 0
-                - null
-                - $multiply:
-                    - $divide:
-                        - $subtract:
-                            - $company_promoters_fytd
-                            - $company_detractors_fytd
+              $round:
+                - $cond:
+                    - $eq:
                         - $company_nps_sample_fytd
-                    - 100
+                        - 0
+                    - null
+                    - $multiply:
+                        - $divide:
+                            - $subtract:
+                                - $company_promoters_fytd
+                                - $company_detractors_fytd
+                            - $company_nps_sample_fytd
+                        - 100
+                - 1
 
 properties:
-  height: 
-    _var: height
-  paddingRight: 0
-  # paddingBottom: 0
-  paddingLeft: 0
-  marginLeft: 20
-  marginRight: 20
-  numberFormatter:
-    numberFormat: "#.#"
-  colors:
-    list:
-      _var: colors
-  data:
-    _mql.aggregate:
-      on:
-        _request: divisions_overview_{{ id }}
-      pipeline:
-        - $addFields:
-            all:
-              $concat:
-                - "Company FYtD: [bold]"
-                - $toString: 
-                    $ifNull:
-                      - $round:
-                        - $company_fytd
-                        - 1
-                      - ""
-                - "[/]\n"
-                - "1 Month: [bold]"
-                - $toString: 
-                    $ifNull:
-                      - $round:
-                        - $nps_1month
-                        - 1
-                      - ""
-                - "[/]\n"
-                - "3 Months: [bold]"
-                - $toString: 
-                    $round:
-                      - $nps_3month
-                      - 1
-                - "[/]\n"
-                - "6 Months: [bold]"
-                - $toString: 
-                    $round:
-                      - $nps_6month
-                      - 1
-                - "[/]\n"
-                - "FYtD: [bold]"
-                - $toString: 
-                    $round:
-                      - $nps_fytd
-                      - 1
-                - "[/]\n"
-  legend:
-    type: Legend
-    position: bottom
-    # useDefaultMarker: true
-    fontSize: 12
-    # maxWidth: 100
-    itemContainers: 
-      # width: 40
-      # paddingTop: 0
-      paddingBottom: 0
-      paddingLeft: -15
-      paddingRight: 0
-  xAxes:
-    - type: CategoryAxis
-      id: division
-      cursorTooltipEnabled: false
-      dataFields:
-        category: _id
-      renderer:
-        cellStartLocation: 0.1
-        cellEndLocation: 0.9
-        minGridDistance: 20
-        grid:
-          location: 0
-        labels:
-          contentAlign: right
-          rotation: -60
-          fontSize: 12
-          verticalCenter: middle
-          horizontalCenter: right
-  yAxes:
-    - type: ValueAxis
-      extraMax: 0.1
-      cursorTooltipEnabled: false
-      title:
-        disabled: true
-      # renderer:
-      #   grid:
-      #     disabled: true
-      #   labels:
-      #     disabled: true
-  cursor:
-    type: XYCursor
-    xAxis: division
-    fullWidthLineX: true
-    lineX:
-      fill: #607d8b
-      fillOpacity: 0.1
-    lineY:
-      disabled: true
-
-  series:
-    - type: ColumnSeries
-      name: 1 Month
-      fillOpacity: 0.5
-      dataFields:
-        categoryX: _id
-        valueY: nps_1month
-      legendSettings:
-        itemValueText: '{valueY}'
-      # columns:
-      #   tooltipText: '{name}: {valueY}'
-    - type: ColumnSeries
-      name: 3 Months
-      fillOpacity: 0.5
-      dataFields:
-        categoryX: _id
-        valueY: nps_3month
-      legendSettings:
-        itemValueText: '{valueY}'
-      # columns:
-      #   tooltipText: '{name}: {valueY}'
-    - type: ColumnSeries
-      name: 6 Months
-      fillOpacity: 0.5
-      dataFields:
-        categoryX: _id
-        valueY: nps_6month
-      legendSettings:
-        itemValueText: '{valueY}'
-      # columns:
-      #   tooltipText: '{name}: {valueY}'
-    - type: ColumnSeries
-      name: FYtD
-      fillOpacity: 0.5
-      dataFields:
-        categoryX: _id
-        valueY: nps_fytd
-      legendSettings:
-        itemValueText: '{valueY}'
-      # columns:
-      #   tooltipText: '{name}: {valueY}'
-    - type: LineSeries
-      name: Company FYtD
-      connect: false
-      strokeWidth: 4
-      stroke: "#000"
-      tensionX: 0.9
-      tensionY: 0.9
-      legendSettings:
-        itemValueText: '{valueY}'
-      dataFields:
-        valueY: company_fytd
-        categoryX: _id
-        all: all
-      tooltipText: '{all}'
-      tooltip:
-        getFillFromObject: false
-        background:
-          fill: "#000"
+  init:
+    height: 
+      _var: height
+  option:
+    grid:
+      left: 50
+      top: 20
+      right: 0
+      bottom: 30%
+    color:
+      _array.concat:
+        - _array.slice:
+            - _var: colors
+            - 0
+            - _get:
+                key: length
+                from: 
+                  _var: departments
+        - '#000'
+    dataset:
+      source:
+        _if_none:
+          - _mql.aggregate:
+              on:
+                _request: divisions_overview_{{ id }}
+              pipeline:
+                - $addFields:
+                    all:
+                      $concat:
+                        - "Company FYtD: [bold]"
+                        - $toString: 
+                            $ifNull:
+                              - $round:
+                                - $company_fytd
+                                - 1
+                              - ""
+                        - "[/]\n"
+                        - "1 Month: [bold]"
+                        - $toString: 
+                            $ifNull:
+                              - $round:
+                                - $nps_1month
+                                - 1
+                              - ""
+                        - "[/]\n"
+                        - "3 Months: [bold]"
+                        - $toString: 
+                            $round:
+                              - $nps_3month
+                              - 1
+                        - "[/]\n"
+                        - "6 Months: [bold]"
+                        - $toString: 
+                            $round:
+                              - $nps_6month
+                              - 1
+                        - "[/]\n"
+                        - "FYtD: [bold]"
+                        - $toString: 
+                            $round:
+                              - $nps_fytd
+                              - 1
+                        - "[/]\n"
+          - []
+    legend:
+      bottom: 10
+    tooltip:
+      trigger: axis
+      axisPointer: 
+        type: cross
+    xAxis: 
+      type: category
+      axisLabel:
+        rotate: 60
+      axisPointer: 
+        type: line
+        snap: true
+    yAxis:
+      name: NPS
+      nameLocation: middle
+      nameRotate: 90
+      nameGap: 30
+      type: value
+      min: 0
+      max: 100
+      axisPointer: 
+        show: false
+    series:
+      - name: 1 Month
+        type: bar
+        symbol: none
+        smooth: true
+        emphasis:
+          itemStyle:
+            opacity: 1
+        itemStyle:
+          opacity: 0.6
+        encode:
+          x: _id
+          y: nps_1month
+      - name: 3 Months
+        type: bar
+        symbol: none
+        smooth: true
+        emphasis:
+          itemStyle:
+            opacity: 1
+        itemStyle:
+          opacity: 0.6
+        encode:
+          x: _id
+          y: nps_3month
+      - name: 6 Months
+        type: bar
+        symbol: none
+        smooth: true
+        emphasis:
+          itemStyle:
+            opacity: 1
+        itemStyle:
+          opacity: 0.6
+        encode:
+          x: _id
+          y: nps_6month
+      - name: FYtD
+        type: bar
+        symbol: none
+        smooth: true
+        emphasis:
+          itemStyle:
+            opacity: 1
+        itemStyle:
+          opacity: 0.6
+        encode:
+          x: _id
+          y: nps_fytd
+      - name: Company FYtD
+        type: line
+        symbol: none
+        smooth: true
+        lineStyle:
+          width: 4
+        encode:
+          x: _id
+          y: company_fytd

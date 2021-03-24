@@ -5,6 +5,7 @@ _ref:
     dashboard_name: Overview
     connectionId: cx_collection
     division_selector: Company
+    month_average: 3
     departments:
       - New Business
       - Key Accounts

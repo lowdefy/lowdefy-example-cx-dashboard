@@ -82,18 +82,13 @@ blocks:
             id: {{ id }}_csi_trend
             connectionId: {{ connectionId }}
             division: {{ division }}
-            month_average: 3
             height:
               _var:
                 name: chart_height
-                default: 90
+                default: 120
             color:
               _var: color
             span: 13
-            departments:
-              _var: departments
-            divisions:
-              _var: divisions
 
   - id: nps_box
     type: Box
@@ -154,13 +149,8 @@ blocks:
             id: {{ id }}_nps_microchart
             connectionId: {{ connectionId }}
             division: {{ division }}
-            month_average: 3
             height:
               _var:
                 name: chart_height
-                default: 90
+                default: 120
             span: 13
-            departments:
-              _var: departments
-            divisions:
-              _var: divisions

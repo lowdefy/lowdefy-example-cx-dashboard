@@ -151,7 +151,38 @@ requests:
               $arrayElemAt:
                 - $months.value
                 - 5
+  - _ref:
+      path: templates/aggregations/csi_trend.yaml.njk
+      vars:
+        connectionId: {{ connectionId }}
+        month_average: 
+          _var: month_average
+        departments:
+          _var: departments_fields
+        divisions:
+          _var: divisions_fields
 
+  - _ref:
+      path: templates/aggregations/nps_trend.yaml.njk
+      vars:
+        connectionId: {{ connectionId }}
+        month_average: 
+          _var: month_average
+        departments:
+          _var: departments_fields
+        divisions:
+          _var: divisions_fields
+
+  - _ref:
+      path: templates/aggregations/overview_index.yaml.njk
+      vars:
+        connectionId: {{ connectionId }}
+        month_average: 
+          _var: month_average
+        departments:
+          _var: departments_fields
+        divisions:
+          _var: divisions_fields
 events:
   onInit:
     - id: set_departments
@@ -171,6 +202,7 @@ events:
           key: '0'
           from:
             _request: init
+  onInitAsync:
     - id: fetch_all
       type: Request
       params:
@@ -218,6 +250,8 @@ blocks:
               type: Request
               messages:
                 loading: true
+              params:
+                all: true
             - id: close_filter_drawer
               type: CallMethod
               params:
@@ -323,7 +357,7 @@ blocks:
                 id: company
                 connectionId: {{ connectionId }}
                 division: company
-                chart_height: 70
+                chart_height: 120
                 current_csi_title: 
                   _nunjucks: | 
                     {% raw %}CSI {{ end_month | date("MMM YYYY") }} {% endraw %}
@@ -585,4 +619,4 @@ blocks:
                 departments:
                   _var: departments_fields
                 divisions:
-                  _var: divisions_fields
+                  _var: divisions_fields 

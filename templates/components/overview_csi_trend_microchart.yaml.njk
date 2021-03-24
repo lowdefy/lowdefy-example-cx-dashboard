@@ -13,7 +13,10 @@
 ## ------------------
 
 id: {{ id }}
-type: AmChartsXY
+type: EChart
+style:
+  height:
+    _var: height
 layout:
   flex:
     _var:
@@ -25,352 +28,51 @@ layout:
       default: 24
   sm:
     size: auto
-requests:
-  - id: csi_trend_{{ id }}
-    type: MongoDBAggregation
-    connectionId:
-      _var: connectionId
-    properties:
-      pipeline:
-        - $match:
-            published: true
-            department:
-              $in:
-                _state: departments
-        - $match:
-            $expr:
-              $and:
-                - $lte:
-                    - $Mnt
-                    - _state: end_month
-                - $gte:
-                    - $Mnt
-                    - $dateFromParts:
-                        year:
-                          $year:
-                            _state: end_month
-                        month:
-                          $subtract:
-                            - $month:
-                                _state: end_month
-                            - $add:
-                                - 23
-                                - _var: month_average
-        - $group:
-            _id: $Mnt
-            company_csi_den:
-              $sum: 1
-            company_csi_num:
-              $sum: $csi
-            company_csi:
-              $avg: $csi
-{% for item in departments %}
-            {{ item.field }}_csi_den:
-              $sum:
-                $cond:
-                  - $eq:
-                    - $department
-                    - {{ item.name }}
-                  - 1
-                  - 0
-            {{ item.field }}_csi_num:
-              $sum:
-                $cond:
-                  - $eq:
-                    - $department
-                    - {{ item.name }}
-                  - $csi
-                  - 0
-            {{ item.field }}_csi:
-              $avg:
-                $cond:
-                  - $eq:
-                    - $department
-                    - {{ item.name }}
-                  - $csi
-                  - null
-{% endfor %}
-
-{% for item in divisions %}
-            {{ item.field }}_csi_den:
-              $sum:
-                $cond:
-                  - $or:
-{% for department in item.departments %}
-                    - $eq:
-                      - $department
-                      - {{ department }}
-{% endfor %}
-                  - 1
-                  - 0
-            {{ item.field }}_csi_num:
-              $sum:
-                $cond:
-                  - $or:
-{% for department in item.departments %}
-                    - $eq:
-                      - $department
-                      - {{ department }}
-{% endfor %}
-                  - $csi
-                  - 0
-            {{ item.field }}_csi:
-              $avg:
-                $cond:
-                  - $or:
-{% for department in item.departments %}
-                    - $eq:
-                      - $department
-                      - {{ department }}
-{% endfor %}
-                  - $csi
-                  - null
-{% endfor %}
-        - $sort:
-            _id: 1
-        - $group:
-            _id: 0
-            A:
-              $push:
-                month: $_id
-
-                company_csi: $company_csi
-                company_csi_den: $company_csi_den
-                company_csi_num: $company_csi_num
-{% for item in divisions %}
-                {{ item.field }}_csi: ${{ item.field }}_csi
-                {{ item.field }}_csi_den: ${{ item.field }}_csi_den
-                {{ item.field }}_csi_num: ${{ item.field }}_csi_num
-{% endfor %}
-{% for item in departments %}
-                {{ item.field }}_csi: ${{ item.field }}_csi
-                {{ item.field }}_csi_den: ${{ item.field }}_csi_den
-                {{ item.field }}_csi_num: ${{ item.field }}_csi_num
-{% endfor %}
-
-        - $project:
-            A:
-              $map:
-                input:
-                  $range:
-                    - 0
-                    - $subtract:
-                        - $size: $A
-                        - $subtract:
-                            - _var: month_average
-                            - 1
-                in:
-                  month:
-                    $arrayElemAt:
-                      - $A.month
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-
-                  company_csi_current:
-                    $arrayElemAt:
-                      - $A.company_csi
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-                  company_csi:
-                    $cond:
-                      - $eq:
-                          - $sum:
-                              $slice:
-                                - $A.company_csi_den
-                                - $$this
-                                - _var: month_average
-                          - 0
-                      - null
-                      - $divide:
-                          - $sum:
-                              $slice:
-                                - $A.company_csi_num
-                                - $$this
-                                - _var: month_average
-                          - $sum:
-                              $slice:
-                                - $A.company_csi_den
-                                - $$this
-                                - _var: month_average
-
-{% for item in divisions %}
-                  {{ item.field }}_csi_current:
-                    $arrayElemAt:
-                      - $A.{{ item.field }}_csi
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-
-                  {{ item.field }}_csi:
-                    $cond:
-                      - $eq:
-                          - $sum:
-                              $slice:
-                                - $A.{{ item.field }}_csi_den
-                                - $$this
-                                - _var: month_average
-                          - 0
-                      - null
-                      - $divide:
-                          - $sum:
-                              $slice:
-                                - $A.{{ item.field }}_csi_num
-                                - $$this
-                                - _var: month_average
-                          - $sum:
-                              $slice:
-                                - $A.{{ item.field }}_csi_den
-                                - $$this
-                                - _var: month_average
-{% endfor %}
-
-{% for item in departments %}
-                  {{ item.field }}_csi_current:
-                    $arrayElemAt:
-                      - $A.{{ item.field }}_csi
-                      - $sum:
-                          - $$this
-                          - $subtract:
-                              - _var: month_average
-                              - 1
-
-                  {{ item.field }}_csi:
-                    $cond:
-                      - $eq:
-                          - $sum:
-                              $slice:
-                                - $A.{{ item.field }}_csi_den
-                                - $$this
-                                - _var: month_average
-                          - 0
-                      - null
-                      - $divide:
-                          - $sum:
-                              $slice:
-                                - $A.{{ item.field }}_csi_num
-                                - $$this
-                                - _var: month_average
-                          - $sum:
-                              $slice:
-                                - $A.{{ item.field }}_csi_den
-                                - $$this
-                                - _var: month_average
-{% endfor %}
-        - $unwind:
-            path: $A
-        - $replaceRoot:
-            newRoot: $A
-        - $project:
-            month: 1
-            csi_company: $company_csi
-            csi_company_current: $company_csi_current
-{% for item in divisions %}
-            csi_{{ item.field }}: ${{ item.field }}_csi
-            csi_{{ item.field }}_current: ${{ item.field }}_csi_current
-{% endfor %}
-{% for item in departments %}
-            csi_{{ item.field }}: ${{ item.field }}_csi
-            csi_{{ item.field }}_current: ${{ item.field }}_csi_current
-{% endfor %}
-
+loading:
+  type: Skeleton
+  properties: 
+    height: 
+      _var: height
 properties:
-  height: 
-    _var: height
-  paddingTop: 0
-  paddingRight: 0
-  paddingBottom: 0
-  paddingLeft: 0
-  numberFormatter:
-    numberFormat: "#.#"
-  colors:
-    list:
+  init:
+    height: 
+      _var: height
+  option:
+    color:
       - _var: color
-  data:
-    _request: csi_trend_{{ id }}
-  dateFormatter: 
-    dateFormat: MMM yyyy
-  xAxes:
-    - type: DateAxis
-      id: category
-      baseInterval:
-        timeUnit: month
-        count: 1
-      dataFields:
-        category: month
-      title:
-        disabled: true
-      renderer:
-        grid:
-          disabled: true
-        labels:
-          disabled: true
-  yAxes:
-    - type: ValueAxis
-      # min: 0
-      # max: 100
-      extraMin: 0.1
-      cursorTooltipEnabled: false
-      title:
-        disabled: true
-      renderer:
-        grid:
-          disabled: true
-        labels:
-          disabled: true
-  cursor:
-    type: XYCursor
-    xAxis: category
-    fullWidthLineX: true
-    lineX:
-      fill: #607d8b
-      fillOpacity: 0.1
-    lineY:
-      disabled: true
-
-  series:
-    - type: LineSeries
-      name: CSI
-      connect: false
-      fill: 
-        type: LinearGradient
-        rotation: 90
-        gradientUnits: userSpaceOnUse
-        stops:
-          - color: 
-              _var: color
-            opacity: 1
-          - color: 
-              _var: color
-            opacity: 0
-      fillOpacity: 0.5
-      strokeWidth: 4
-      tensionX: 0.9
-      tensionY: 0.9
-      legendSettings:
-        itemValueText: '{valueY}'
-      dataFields:
-        valueY: csi_{{ division }}
-        dateX: month
-        current: csi_{{ division }}_current
-      bullets:
-        - type: CircleBullet
-          tooltipText: "{dateX}\nRolling Avg: {valueY}\nMonth CSI: {current}"
-          strokeWidth: 8
-          scale: 0.5
-          circle: 
-            radius: 0
-          dateFormatter: 
-            dateFormat: MMM yyyy
-          states:
-            hover:
-              properties:
-                scale: 1.2
-        
+    grid:
+      left: 0
+      top: 0
+      right: 0
+      bottom: 20
+    dataset:
+      source:
+        _if_none:
+          - _request: csi_trend
+          - []
+    tooltip:
+      trigger: axis
+      axisPointer: 
+        type: cross
+    xAxis: 
+      type: time
+      show: false
+      axisPointer: 
+        type: line
+        snap: true
+    yAxis: 
+      type: value
+      show: false
+      min: dataMin
+      axisPointer: 
+        show: false
+    series:
+      - name: CSI
+        type: line
+        areaStyle:
+          opacity: 0.3
+        symbol: none
+        smooth: true
+        encode:
+          x: month
+          y: csi_{{ division }}
