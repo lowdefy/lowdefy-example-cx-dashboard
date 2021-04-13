@@ -1,5 +1,5 @@
 name: lowdefy-example-cx-dashboard
-lowdefy: 3.11.4
+lowdefy: 3.12.3
 licence: MIT
 
 types:
@@ -9,8 +9,6 @@ types:
     url: https://blocks-cdn.lowdefy.com/v3.11.3/blocks-amcharts/meta/AmChartsPie.json
   AgGridAlpine:
     url: https://blocks-cdn.lowdefy.com/v3.11.1/blocks-aggrid/meta/AgGridAlpine.json
-  EChart:
-    url: http://localhost:3002/meta/EChart.json
 
 global:
   _ref: global.yaml

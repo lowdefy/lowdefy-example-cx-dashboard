@@ -24,9 +24,6 @@ loading:
   properties: 
     height: 
       _var: height
-style:
-  height:
-    _var: height
 requests:
   - id: divisions_overview_{{ id }}
     type: MongoDBAggregation
@@ -437,9 +434,8 @@ requests:
                 - 1
 
 properties:
-  init:
-    height: 
-      _var: height
+  height: 
+    _var: height
   option:
     grid:
       left: 50
