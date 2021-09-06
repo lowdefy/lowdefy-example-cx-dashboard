@@ -1,8 +1,8 @@
 ## -----------------
-## 
+##
 ## overview_statistic
 ## Calculate index for selected period and show statistic along with movement from previous period
-## 
+##
 ## vars:
 ##   id: _string_ (REQUIRED) - id for the component.
 ##   span: _integer_ - Span of the component. Default 24.
@@ -475,7 +475,7 @@ requests:
                   csi_{{ item.field }}_current: ${{ item.field }}_csi
                   nps_{{ item.field }}_current: ${{ item.field }}_nps
 {% endfor %}
-        
+
             previous_month:
               - $match:
                   $expr:
@@ -715,7 +715,7 @@ requests:
                   nps_company_difference:
                     $subtract:
                       - $current_month.nps_company_current
-                      - $previous_month.nps_company_previous 
+                      - $previous_month.nps_company_previous
 {% for item in divisions %}
                   csi_{{ item.field }}_difference:
                     $subtract:
@@ -743,7 +743,7 @@ blocks:
   - id: index_statistic_title_{{ id }}
     type: Html
     properties:
-      html: 
+      html:
         _nunjucks:
           template: |
             {% raw %}
@@ -854,10 +854,7 @@ blocks:
                         then: '#cf1322'
                     default: '#212121'
                 on:
-                  _get:
-                    key: '0'
-                    from:
-                      _request: overview_index_{{ id }}
+                  _request: overview_index_{{ id }}.0
       - id: movement_text_{{ id }}
         type: Html
         layout:
@@ -880,10 +877,7 @@ blocks:
                     name: subtitle_font_size
                     default: 16
                 movement:
-                  _get:
-                    key: '0.{{ index }}_{{ division }}_difference'
-                    from:
-                      _request: overview_index_{{ id }}
+                  _request: overview_index_{{ id }}.0.{{ index }}_{{ division }}_difference
                 color:
                   _mql_expr:
                     expr:
@@ -901,7 +895,4 @@ blocks:
                             then: '#b71c1c'
                         default: '#212121'
                     on:
-                      _get:
-                        key: '0'
-                        from:
-                          _request: overview_index_{{ id }}
+                      _request: overview_index_{{ id }}.0

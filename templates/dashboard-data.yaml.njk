@@ -25,10 +25,7 @@ actions:
     - id: set_init
       type: SetState
       params:
-        _get:
-          key: '0'
-          from:
-            _request: init
+        _request: init.0
     - id: fetch_interviews
       type: Fetch
       params:
@@ -58,7 +55,7 @@ requests:
               $first: $financial_year
 {% for item in filter_fields %}
             {{ item.field }}_list:
-              $addToSet: 
+              $addToSet:
                 $cond:
                   - $eq:
                       - $financial_year
@@ -71,7 +68,7 @@ requests:
             _id: -1
         - $group:
             _id: 0
-            total: 
+            total:
               $sum: $total
             max_financial_year:
               $max: $financial_year
@@ -755,10 +752,7 @@ blocks:
           pageSizeOptions: [5, 10, 20, 50, 100]
           responsive: true
           total:
-            _get:
-              key: 0.total
-              from:
-                _request: totals
+            _request: totals.0.total
         actions:
           onShowSizeChange:
             - id: fetch_interviews

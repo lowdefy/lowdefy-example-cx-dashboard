@@ -160,10 +160,8 @@ actions:
     - id: set_init
       type: SetState
       params:
-        _get:
-          key: '0'
-          from:
-            _request: init
+        _request: init.0
+
 blocks:
   - id: filter_drawer
     type: Drawer
@@ -180,10 +178,8 @@ blocks:
           title: Report Month
           placeholder: Select month
           options:
-            _get:
-              key: '0.months'
-              from:
-                _request: init
+            _request: init.0.months
+
       - id: filter_apply_button
         type: Button
         properties:
@@ -197,10 +193,8 @@ blocks:
             - id: set_months
               type: SetState
               params:
-                _get:
-                  key: '0'
-                  from:
-                    _request: update_months
+                _request: update_months.0
+
             - id: fetch_all
               type: Fetch
             - id: close_filter_drawer
@@ -395,7 +389,7 @@ blocks:
               params:
                 blockId: nps_explainer_modal
                 method: toggleOpen
-        
+
       - id: nps_card
         type: Card
         layout:
@@ -415,8 +409,8 @@ blocks:
                   vars:
                     id: nps_overview_1month
                     connectionId: {{ connectionId }}
-                    title: 
-                      _nunjucks: | 
+                    title:
+                      _nunjucks: |
                         {% raw %}{{ end_month | date("MMMM YYYY") }} {% endraw %}
           - id: nps_bar_box
             type: Box
