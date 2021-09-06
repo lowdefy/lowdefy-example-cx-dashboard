@@ -1,8 +1,8 @@
 ## -----------------
-## 
+##
 ## index_statistic
 ## Calculate index for selected period and show statistic along with movement from previous period
-## 
+##
 ## vars:
 ##   id: _string_ (REQUIRED) - id for the component.
 ##   span: _integer_ - Span of the component. Default 24.
@@ -77,7 +77,7 @@ requests:
                             year:
                               $year:
                                 _state: end_month
-                            month: 
+                            month:
                               $subtract:
                                 - $month:
                                     _state: end_month
@@ -112,7 +112,7 @@ requests:
                             year:
                               $year:
                                 _state: end_month
-                            month: 
+                            month:
                               $subtract:
                                 - $month:
                                     _state: end_month
@@ -133,7 +133,7 @@ requests:
                   - 0
             index_current:
               $avg:
-                $cond: 
+                $cond:
                   - $eq:
                       - $index_period
                       - Current
@@ -149,7 +149,7 @@ requests:
                   - 0
             index_previous:
               $avg:
-                $cond: 
+                $cond:
                   - $eq:
                       - $index_period
                       - Previous
@@ -168,7 +168,7 @@ blocks:
   - id: index_statistic_title_{{ id }}
     type: Html
     properties:
-      html: 
+      html:
         _nunjucks:
           template: |
             {% raw %}
@@ -270,10 +270,8 @@ blocks:
                         then: '#cf1322'
                     default: '#212121'
                 on:
-                  _get:
-                    key: '0'
-                    from:
-                      _request: index_statistic_aggregation_{{ id }}
+                  _request: index_statistic_aggregation_{{ id }}.0
+
       - id: index_statistic_sub_title_{{ id }}
         type: Html
         layout:
@@ -296,10 +294,7 @@ blocks:
                     name: subtitle_font_size
                     default: 16
                 movement:
-                  _get:
-                    key: '0.index_difference'
-                    from:
-                      _request: index_statistic_aggregation_{{ id }}
+                  _request: index_statistic_aggregation_{{ id }}.0.index_difference
                 color:
                   _mql_expr:
                     expr:
@@ -317,7 +312,4 @@ blocks:
                             then: '#b71c1c'
                         default: '#212121'
                     on:
-                      _get:
-                        key: '0'
-                        from:
-                          _request: index_statistic_aggregation_{{ id }}
+                      _request: index_statistic_aggregation_{{ id }}.0

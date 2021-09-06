@@ -1,8 +1,8 @@
 ## -----------------
-## 
+##
 ## nps_statistic
 ## Calculate nps for selected period and show statistic along with movement from previous period
-## 
+##
 ## vars:
 ##   id: _string_ (REQUIRED) - id for the component.
 ##   span: _integer_ - Span of the component. Default 24.
@@ -78,7 +78,7 @@ requests:
                             year:
                               $year:
                                 _state: end_month
-                            month: 
+                            month:
                               $subtract:
                                 - $month:
                                     _state: end_month
@@ -113,7 +113,7 @@ requests:
                             year:
                               $year:
                                 _state: end_month
-                            month: 
+                            month:
                               $subtract:
                                 - $month:
                                     _state: end_month
@@ -134,7 +134,7 @@ requests:
                   - 0
             promoters_current:
               $sum:
-                $cond: 
+                $cond:
                   - $and:
                       - $eq:
                           - $promoter
@@ -146,7 +146,7 @@ requests:
                   - 0
             detractors_current:
               $sum:
-                $cond: 
+                $cond:
                   - $and:
                       - $eq:
                           - $promoter
@@ -166,7 +166,7 @@ requests:
                   - 0
             promoters_previous:
               $sum:
-                $cond: 
+                $cond:
                   - $and:
                       - $eq:
                           - $promoter
@@ -178,7 +178,7 @@ requests:
                   - 0
             detractors_previous:
               $sum:
-                $cond: 
+                $cond:
                   - $and:
                       - $eq:
                           - $promoter
@@ -218,7 +218,7 @@ blocks:
   - id: nps_statistic_title_{{ id }}
     type: Html
     properties:
-      html: 
+      html:
         _nunjucks:
           template: |
             {% raw %}
@@ -320,10 +320,8 @@ blocks:
                         then: '#cf1322'
                     default: '#212121'
                 on:
-                  _get:
-                    key: '0'
-                    from:
-                      _request: nps_statistic_aggregation_{{ id }}
+                  _request: nps_statistic_aggregation_{{ id }}.0
+
       - id: nps_statistic_sub_title_{{ id }}
         type: Html
         layout:
@@ -346,10 +344,7 @@ blocks:
                     name: subtitle_font_size
                     default: 16
                 movement:
-                  _get:
-                    key: '0.nps_difference'
-                    from:
-                      _request: nps_statistic_aggregation_{{ id }}
+                  _request: nps_statistic_aggregation_{{ id }}.0.nps_difference
                 color:
                   _mql_expr:
                     expr:
@@ -367,7 +362,4 @@ blocks:
                             then: '#b71c1c'
                         default: '#212121'
                     on:
-                      _get:
-                        key: '0'
-                        from:
-                          _request: nps_statistic_aggregation_{{ id }}
+                      _request: nps_statistic_aggregation_{{ id }}.0

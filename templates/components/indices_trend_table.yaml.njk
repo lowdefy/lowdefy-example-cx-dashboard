@@ -1,8 +1,8 @@
 ## -----------------
-## 
+##
 ## indices_trend_table.yaml
 ## Calculate indices and trend table.
-## 
+##
 ## vars:
 ##   id: _string_ - id for the component.
 ##   connectionId: _string_ - MongoDB collection connection id.
@@ -34,7 +34,7 @@ requests:
                     year:
                       $year:
                         _state: end_month
-                    month: 
+                    month:
                       $subtract:
                         - $month:
                             _state: end_month
@@ -43,7 +43,7 @@ requests:
             _id: 0
 {% for index in indices %}
             {{ index.name }}_current:
-              $avg: 
+              $avg:
                 $cond:
                   - $eq:
                       - $Mnt
@@ -51,15 +51,15 @@ requests:
                   - ${{ index.field }}
                   - null
             {{ index.name }}_previous:
-              $avg: 
+              $avg:
                 $cond:
                   - $eq:
                       - $Mnt
                       - $dateFromParts:
                           year:
-                            $year: 
+                            $year:
                               _state: end_month
-                          month: 
+                          month:
                             $subtract:
                               - $month:
                                   _state: end_month
@@ -67,15 +67,15 @@ requests:
                   - ${{ index.field }}
                   - null
             {{ index.name }}_3month:
-              $avg: 
+              $avg:
                 $cond:
                   - $gte:
                       - $Mnt
                       - $dateFromParts:
                           year:
-                            $year: 
+                            $year:
                               _state: end_month
-                          month: 
+                          month:
                             $subtract:
                               - $month:
                                   _state: end_month
@@ -83,15 +83,15 @@ requests:
                   - ${{ index.field }}
                   - null
             {{ index.name }}_6month:
-              $avg: 
+              $avg:
                 $cond:
                   - $gte:
                       - $Mnt
                       - $dateFromParts:
                           year:
-                            $year: 
+                            $year:
                               _state: end_month
-                          month: 
+                          month:
                             $subtract:
                               - $month:
                                   _state: end_month
@@ -101,7 +101,7 @@ requests:
             {{ index.name }}_12month:
               $avg: ${{ index.field }}
             {{ index.name }}_fytd:
-              $avg: 
+              $avg:
                 $cond:
                   - $eq:
                       - $financial_year
@@ -181,7 +181,4 @@ blocks:
             current_month:
               _state: end_month
             data:
-              _get:
-                key: '0.A'
-                from:
-                  _request: indices_trend_table_{{ id }}
+              _request: indices_trend_table_{{ id }}.0.A

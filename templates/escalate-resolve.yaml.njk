@@ -29,10 +29,8 @@ actions:
     - id: set_init
       type: SetState
       params:
-        _get:
-          key: '0'
-          from:
-            _request: init
+        _request: init.0
+
     - id: fetch_interviews
       type: Fetch
       params:
@@ -65,7 +63,7 @@ requests:
               $first: $financial_year
 {% for item in filter_fields %}
             {{ item.field }}_list:
-              $addToSet: 
+              $addToSet:
                 $cond:
                   - $eq:
                       - $financial_year
@@ -78,7 +76,7 @@ requests:
             _id: -1
         - $group:
             _id: 0
-            total: 
+            total:
               $sum: $total
             max_financial_year:
               $max: $financial_year
@@ -407,7 +405,7 @@ requests:
             phone: 1
             interaction_date: 1
             er_history:
-              $reverseArray: 
+              $reverseArray:
                 $concatArrays:
                   - - timestamp: $interview_date
                       action: Interviewed
@@ -827,7 +825,7 @@ blocks:
                   params:
                     interviews:
                       _request: interviews
-      
+
       - id: interviews_card
         type: Card
         layout:
@@ -872,10 +870,8 @@ blocks:
                       type: SetState
                       params:
                         selected:
-                          _get:
-                            key: '0'
-                            from:
-                              _request: fetch_selected
+                          _request: fetch_selected.0
+
                 blocks:
                   - id: interviews.$.status_box
                     type: Box
@@ -1073,10 +1069,8 @@ blocks:
                   pageSizeOptions: [5, 10, 20, 50, 100]
                   responsive: true
                   total:
-                    _get:
-                      key: 0.total
-                      from:
-                        _request: totals
+                    _request: totals.0.total
+
                 actions:
                   onShowSizeChange:
                     - id: fetch_interviews
@@ -1108,7 +1102,7 @@ blocks:
                       params:
                         interviews:
                           _request: interviews
-  
+
   - id: selected_box
     type: Box
     layout:
@@ -1230,10 +1224,7 @@ blocks:
                               type: SetState
                               params:
                                 selected:
-                                  _get:
-                                    key: '0'
-                                    from:
-                                      _request: fetch_selected
+                                  _request: fetch_selected.0
                                 interviews:
                                   _request: interviews
                   - id: selected.actions_buttons_box
@@ -1402,7 +1393,7 @@ blocks:
                               params:
                                 blockId: close_action_drawer
                                 method: toggleOpen
-                      
+
                       - id: div
                         type: Html
                         style:
@@ -1520,7 +1511,7 @@ blocks:
                                     {% endraw %}
                                   on:
                                     _state: selected.er_history.$
-                  
+
                   - id: selected.scores_box
                     type: Box
                     layout:
@@ -1741,7 +1732,7 @@ blocks:
                             - label: Department
                               value:
                                 _state: selected.department
-                  
+
                   - id: selected.interview_box
                     type: Box
                     layout:
@@ -1913,10 +1904,7 @@ blocks:
               type: SetState
               params:
                 selected:
-                  _get:
-                    key: '0'
-                    from:
-                      _request: fetch_selected
+                  _request: fetch_selected.0
                 interviews:
                   _request: interviews
             - id: set_visible
@@ -1933,7 +1921,7 @@ blocks:
                 method: setOpen
                 args:
                   open: false
-  
+
   - id: comment_action_drawer
     type: Drawer
     layout:
@@ -1992,10 +1980,7 @@ blocks:
               type: SetState
               params:
                 selected:
-                  _get:
-                    key: '0'
-                    from:
-                      _request: fetch_selected
+                  _request: fetch_selected.0
                 interviews:
                   _request: interviews
             - id: set_visible
@@ -2005,7 +1990,7 @@ blocks:
                 method: setOpen
                 args:
                   open: false
-  
+
   - id: escalate_drawer
     type: Drawer
     layout:
@@ -2063,10 +2048,7 @@ blocks:
               type: SetState
               params:
                 selected:
-                  _get:
-                    key: '0'
-                    from:
-                      _request: fetch_selected
+                  _request: fetch_selected.0
                 interviews:
                   _request: interviews
             - id: set_visible
@@ -2076,7 +2058,7 @@ blocks:
                 method: setOpen
                 args:
                   open: false
-  
+
   - id: close_action_drawer
     type: Drawer
     layout:

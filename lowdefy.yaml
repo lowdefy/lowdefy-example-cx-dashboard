@@ -1,5 +1,11 @@
 lowdefy: 3.21.2
 
+types:
+  AmCharts4XY:
+    url: https://blocks-cdn.lowdefy.com/v3.10.1/blocks-amcharts/meta/AmChartsXY.json
+  AgGrid:
+    url: https://blocks-cdn.lowdefy.com/v3.12.3/blocks-aggrid/meta/AgGridAlpine.json
+
 global:
   _ref: global.yaml
 
